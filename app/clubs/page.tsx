@@ -1,5 +1,7 @@
 import { supabase } from '@/lib/supabase';
 
+export const dynamic = 'force-dynamic';
+
 export default async function ClubsPage() {
   const { data: clubs, error } = await supabase.from('clubs').select('*').eq('status', 'approved');
 
