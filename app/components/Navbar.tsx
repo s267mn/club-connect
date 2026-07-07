@@ -49,7 +49,7 @@ export default function Navbar() {
 
         {userEmail && (
           <>
-            <Link href="/clubsrequest" className="text-[var(--steel)] hover:text-[var(--cyan)] transition-colors">Club Registry</Link>
+            <Link href="/clubsrequest" className="text-[var(--steel)] hover:text-[var(--cyan)] transition-colors">Start a Club</Link>
             <Link href="/profile" className="text-[var(--steel)] hover:text-[var(--cyan)] transition-colors">My Profile</Link>
           </>
         )}
