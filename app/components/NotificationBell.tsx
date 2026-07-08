@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useRouter } from 'next/navigation';
 import { Bell } from 'lucide-react';
 
 type Notification = {
@@ -17,6 +18,7 @@ export default function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   const load = async () => {
     const { data: sessionData } = await supabase.auth.getSession();
@@ -77,6 +79,18 @@ export default function NotificationBell() {
     }
   };
 
+  const handleNotificationClick = async (n: Notification) => {
+    setOpen(false);
+
+    if (!n.read) {
+      setNotifications((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)));
+      const { error } = await supabase.from('notifications').update({ read: true }).eq('id', n.id);
+      if (error) console.error('Failed to mark notification as read:', error);
+    }
+
+    if (n.link) router.push(n.link);
+  };
+
   const timeAgo = (dateStr: string | null) => {
     if (!dateStr) return '';
     const diffMs = Date.now() - new Date(dateStr).getTime();
@@ -122,7 +136,11 @@ export default function NotificationBell() {
           ) : (
             <ul className="divide-y divide-[var(--border)]">
               {notifications.map((n) => (
-                <li key={n.id} className={`px-4 py-3 text-sm ${!n.read ? 'bg-[rgba(45,212,206,0.05)]' : ''}`}>
+                <li
+                  key={n.id}
+                  onClick={() => handleNotificationClick(n)}
+                  className={`px-4 py-3 text-sm cursor-pointer hover:bg-[rgba(255,255,255,0.05)] transition-colors ${!n.read ? 'bg-[rgba(45,212,206,0.05)]' : ''}`}
+                >
                   <div className="flex items-start gap-2">
                     {!n.read && <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-[var(--cyan)] shrink-0" />}
                     <div className="flex-1">

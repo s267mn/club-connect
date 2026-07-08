@@ -40,17 +40,41 @@ export default function VerifyContributions({ clubId }: { clubId: string }) {
     const { data: userRow } = await supabase.from('users').select('id').eq('email', email).single();
     if (!userRow) { alert('Could not identify your account — please refresh and try again.'); return; }
 
+    const contrib = contributions.find((c) => c.id === contribId);
+
     setProcessingIds((prev) => [...prev, contribId]);
     setContributions((prev) => prev.filter((c) => c.id !== contribId));
 
     await supabase.from('contributions').update({ status: 'verified', score, verified_by: userRow.id }).eq('id', contribId);
+
+    if (contrib) {
+      const { error: notifError } = await supabase.from('notifications').insert({
+        user_id: contrib.user_id,
+        message: `Your contribution "${contrib.title}" was verified with a score of ${score}!`,
+        link: `/profile`,
+      });
+      if (notifError) console.error('Failed to notify student (verify):', notifError);
+    }
   };
 
   const handleReject = async (contribId: string) => {
     if (processingIds.includes(contribId)) return;
+
+    const contrib = contributions.find((c) => c.id === contribId);
+
     setProcessingIds((prev) => [...prev, contribId]);
     setContributions((prev) => prev.filter((c) => c.id !== contribId));
+
     await supabase.from('contributions').update({ status: 'rejected' }).eq('id', contribId);
+
+    if (contrib) {
+      const { error: notifError } = await supabase.from('notifications').insert({
+        user_id: contrib.user_id,
+        message: `Your contribution "${contrib.title}" was not verified.`,
+        link: `/profile`,
+      });
+      if (notifError) console.error('Failed to notify student (reject):', notifError);
+    }
   };
 
   if (loading) return <div className="text-sm text-[var(--ink-dim)]">Loading contributions...</div>;

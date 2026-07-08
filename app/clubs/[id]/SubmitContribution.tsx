@@ -43,6 +43,17 @@ export default function SubmitContribution({ clubId, userId }: { clubId: string;
     });
 
     if (insertError) { setError(insertError.message); setSubmitting(false); return; }
+
+    const { data: clubRow } = await supabase.from('clubs').select('created_by').eq('id', clubId).single();
+    if (clubRow?.created_by) {
+      const { error: notifError } = await supabase.from('notifications').insert({
+        user_id: clubRow.created_by,
+        message: `New contribution submitted: "${title}"`,
+        link: `/clubs/${clubId}`,
+      });
+      if (notifError) console.error('Failed to notify club admin:', notifError);
+    }
+
     setSuccess(true);
     setSubmitting(false);
   };
