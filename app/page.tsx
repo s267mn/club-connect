@@ -1,32 +1,37 @@
+import Link from 'next/link';
+import { ArrowRight, ShieldCheck, Loader2 } from 'lucide-react';
+
 export default function Home() {
   return (
-    <main className="min-h-screen flex flex-col justify-center px-8 py-20 md:px-16 relative overflow-hidden">
-      <div className="max-w-3xl relative z-10">
-        <p className="font-mono text-xs tracking-[0.3em] uppercase text-[var(--steel)] mb-6 fade-up" style={{ animationDelay: '0ms' }}>NITK Surathkal &middot; Registry Online</p>
-
-        <h1 className="font-display text-4xl md:text-6xl leading-[1.15] mb-8 fade-up" style={{ animationDelay: '80ms' }}>
-          <span className="text-[var(--cyan)] glow-cyan">CLUB</span>{' '}
-          <span className="text-[var(--gold)] glow-gold">CONNECT</span>
+    <main className="p-6 md:p-10 max-w-5xl">
+      <div className="card p-8 md:p-12 mb-6 fade-up">
+        <p className="text-sm text-[var(--ink-dim)] mb-3">NITK Surathkal</p>
+        <h1 className="font-display text-4xl md:text-5xl leading-tight mb-4 max-w-2xl">
+          Your club work, <span className="text-[var(--peach-ink)]">verified</span> and yours to keep.
         </h1>
-
-        <p className="text-lg text-[var(--steel)] max-w-xl mb-12 leading-relaxed fade-up" style={{ animationDelay: '160ms' }}>
-          Every edit, event, and late-night build for your club — logged, verified, and yours to carry off campus.
+        <p className="text-[var(--ink-dim)] max-w-xl mb-8 leading-relaxed">
+          Every edit, event, and late-night build for your club &mdash; logged, signed off by someone who saw it happen, and ready to show off campus.
         </p>
-
-        <div className="flex flex-wrap items-center gap-4 mb-16 fade-up" style={{ animationDelay: '240ms' }}>
-          <a href="/clubs" className="btn-primary px-6 py-3 rounded-md">Explore Clubs</a>
-          <a href="/signup" className="btn-ghost px-6 py-3 rounded-md">Create Your Record</a>
+        <div className="flex flex-wrap gap-3">
+          <Link href="/clubs" className="btn-primary px-6 py-3 inline-flex items-center gap-2 text-sm">
+            Explore Clubs <ArrowRight size={16} />
+          </Link>
+          <Link href="/signup" className="btn-ghost px-6 py-3 inline-flex items-center gap-2 text-sm">
+            Create Your Record
+          </Link>
         </div>
+      </div>
 
-        <div className="panel rounded-lg p-6 flex flex-wrap gap-x-12 gap-y-6 fade-up" style={{ animationDelay: '320ms' }}>
-          <div className="flex items-center gap-3">
-            <span className="badge-verified">OK</span>
-            <span className="text-sm text-[var(--steel)] max-w-[180px]">Verified &mdash; signed off by someone who saw the work</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="badge-pending">...</span>
-            <span className="text-sm text-[var(--steel)] max-w-[180px]">Pending &mdash; waiting on your club admin</span>
-          </div>
+      <div className="grid md:grid-cols-2 gap-4">
+        <div className="card-tint bg-[var(--mint)] p-6 fade-up">
+          <ShieldCheck className="icon-flip text-[var(--mint-ink)] mb-3" size={22} />
+          <p className="font-medium mb-1">Verified</p>
+          <p className="text-sm text-[var(--ink-dim)]">Signed off by someone who watched you do the work.</p>
+        </div>
+        <div className="card-tint bg-[var(--peach)] p-6 fade-up">
+          <Loader2 className="icon-spin text-[var(--peach-ink)] mb-3" size={22} />
+          <p className="font-medium mb-1">Pending</p>
+          <p className="text-sm text-[var(--ink-dim)]">Submitted, waiting on your club admin to review.</p>
         </div>
       </div>
     </main>

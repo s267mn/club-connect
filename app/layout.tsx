@@ -1,24 +1,17 @@
 import type { Metadata } from "next";
-import { Michroma, Inter, Space_Mono } from "next/font/google";
+import { Sora, Public_Sans } from "next/font/google";
 import "./globals.css";
-import Navbar from './components/Navbar';
-import Footer from './components/Footer';
+import Sidebar from './components/Sidebar';
 
-const michroma = Michroma({
+const sora = Sora({
   variable: "--font-display",
   subsets: ["latin"],
-  weight: "400",
+  weight: ["600", "700"],
 });
 
-const inter = Inter({
+const publicSans = Public_Sans({
   variable: "--font-body",
   subsets: ["latin"],
-});
-
-const spaceMono = Space_Mono({
-  variable: "--font-mono",
-  subsets: ["latin"],
-  weight: ["400", "700"],
 });
 
 export const metadata: Metadata = {
@@ -32,11 +25,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${michroma.variable} ${inter.variable} ${spaceMono.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col">
-        <Navbar />
-        {children}
-        <Footer />
+    <html lang="en" className={`${sora.variable} ${publicSans.variable} h-full antialiased`}>
+      <body className="min-h-full bg-[var(--bg)] text-[var(--ink)]">
+        <div className="bg-ambient">
+          <div className="blob blob-1" />
+          <div className="blob blob-2" />
+          <div className="blob blob-3" />
+        </div>
+        <div className="flex min-h-screen">
+          <Sidebar />
+          <div className="flex-1 min-w-0">{children}</div>
+        </div>
       </body>
     </html>
   );
