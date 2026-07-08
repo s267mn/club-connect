@@ -1,5 +1,8 @@
 import { supabase } from '@/lib/supabase';
-import { ArrowRight, Users } from 'lucide-react';
+import { ArrowRight, Users, Lock } from 'lucide-react';
+import Link from 'next/link';
+import { cookies } from 'next/headers';
+import { createClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
 

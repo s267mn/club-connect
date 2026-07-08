@@ -53,6 +53,13 @@ export default function Sidebar() {
           {userEmail && <Link href="/profile" className={linkClass('/profile')}>My Profile</Link>}
           {isSuperAdmin && <Link href="/dashboard" className={linkClass('/dashboard')}>Dashboard</Link>}
         </nav>
+
+        {!userEmail && (
+          <div className="mt-6 pt-6 border-t border-[var(--border)]">
+            <Link href="/signup" className="btn-primary block text-center py-2.5 text-sm mb-2">Sign Up Free</Link>
+            <Link href="/login" className="block text-center text-sm text-[var(--ink-dim)] hover:text-[var(--ink)] py-1">Log In</Link>
+          </div>
+        )}
       </div>
 
       <div className="px-2">

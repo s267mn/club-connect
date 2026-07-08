@@ -2,16 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { ClipboardCheck, Paperclip, Check, X } from 'lucide-react';
 
 type Contribution = {
-  id: string;
-  title: string;
-  description: string;
-  file_url: string;
-  user_id: string;
-  skill_id: string;
-  users: { name: string; email: string } | null;
-  skills: { name: string } | null;
+  id: string; title: string; description: string; file_url: string; user_id: string; skill_id: string;
+  users: { name: string; email: string } | null; skills: { name: string } | null;
 };
 
 export default function VerifyContributions({ clubId }: { clubId: string }) {
@@ -35,28 +30,15 @@ export default function VerifyContributions({ clubId }: { clubId: string }) {
 
   const handleVerify = async (contribId: string) => {
     const score = parseInt(scores[contribId], 10);
-
-    if (isNaN(score) || score < 0 || score > 100) {
-      alert('Please enter a valid score between 0 and 100.');
-      return;
-    }
-
+    if (isNaN(score) || score < 0 || score > 100) { alert('Please enter a valid score between 0 and 100.'); return; }
     if (processingIds.includes(contribId)) return;
 
     const { data: sessionData } = await supabase.auth.getSession();
     const email = sessionData.session?.user.email;
-
-    if (!email) {
-      alert('Session error — please refresh and try again.');
-      return;
-    }
+    if (!email) { alert('Session error — please refresh and try again.'); return; }
 
     const { data: userRow } = await supabase.from('users').select('id').eq('email', email).single();
-
-    if (!userRow) {
-      alert('Could not identify your account — please refresh and try again.');
-      return;
-    }
+    if (!userRow) { alert('Could not identify your account — please refresh and try again.'); return; }
 
     setProcessingIds((prev) => [...prev, contribId]);
     setContributions((prev) => prev.filter((c) => c.id !== contribId));
@@ -71,29 +53,30 @@ export default function VerifyContributions({ clubId }: { clubId: string }) {
     await supabase.from('contributions').update({ status: 'rejected' }).eq('id', contribId);
   };
 
-  if (loading) return <div className="font-mono text-sm text-[var(--steel)]">Loading contributions...</div>;
+  if (loading) return <div className="text-sm text-[var(--ink-dim)]">Loading contributions...</div>;
   if (contributions.length === 0) return null;
 
   return (
-    <div className="mb-12 fade-up">
-      <h2 className="font-display text-xl text-[var(--gold)] glow-gold mb-4">Pending Contributions</h2>
-      <div className="grid gap-3">
+    <div className="mb-8 fade-up">
+      <div className="flex items-center gap-2 mb-4">
+        <ClipboardCheck className="text-[var(--peach-ink)]" size={18} />
+        <h2 className="text-sm font-semibold text-[var(--ink-dim)] uppercase tracking-wide">Pending Contributions</h2>
+      </div>
+      <div className="space-y-3">
         {contributions.map((c) => (
-          <div key={c.id} className="panel rounded-lg p-5">
-            <div className="flex justify-between items-start mb-2">
-              <div>
-                <p className="font-medium">{c.title}</p>
-                <p className="text-sm text-[var(--steel)]">{c.users?.name} &middot; {c.skills?.name}</p>
-              </div>
-            </div>
-            {c.description && <p className="text-sm text-[var(--text)] mb-2">{c.description}</p>}
+          <div key={c.id} className="card p-5">
+            <p className="font-medium text-sm">{c.title}</p>
+            <p className="text-xs text-[var(--ink-dim)] mt-0.5 mb-2">{c.users?.name} &middot; {c.skills?.name}</p>
+            {c.description && <p className="text-sm text-[var(--ink)] mb-2">{c.description}</p>}
             {c.file_url && (
-              <a href={c.file_url} target="_blank" rel="noopener noreferrer" className="text-sm text-[var(--cyan)] hover:underline">View submitted file</a>
+              <a href={c.file_url} target="_blank" rel="noopener noreferrer" className="text-sm text-[var(--peach-ink)] hover:underline inline-flex items-center gap-1">
+                <Paperclip size={12} /> View submitted file
+              </a>
             )}
             <div className="flex gap-2 items-center mt-3">
-              <input type="number" min="0" max="100" placeholder="0-100" value={scores[c.id] ?? ''} onChange={(e) => setScores((prev) => ({ ...prev, [c.id]: e.target.value }))} className="w-24 p-2 bg-transparent border border-[rgba(139,149,168,0.4)] rounded-md focus:border-[var(--gold)] focus:outline-none transition-colors text-sm font-mono" />
-              <button onClick={() => handleVerify(c.id)} className="btn-primary px-3 py-1.5 rounded-md text-sm">Verify</button>
-              <button onClick={() => handleReject(c.id)} className="btn-ghost px-3 py-1.5 rounded-md text-sm hover:border-[var(--magenta)] hover:text-[var(--magenta)]">Reject</button>
+              <input type="number" min="0" max="100" placeholder="0-100" value={scores[c.id] ?? ''} onChange={(e) => setScores((prev) => ({ ...prev, [c.id]: e.target.value }))} className="w-20 p-2 bg-transparent border border-[var(--border)] rounded-lg text-sm focus:border-[var(--peach-ink)] focus:outline-none" />
+              <button onClick={() => handleVerify(c.id)} className="btn-primary px-3 py-1.5 text-sm inline-flex items-center gap-1"><Check size={14} /> Verify</button>
+              <button onClick={() => handleReject(c.id)} className="btn-ghost px-3 py-1.5 text-sm inline-flex items-center gap-1"><X size={14} /> Reject</button>
             </div>
           </div>
         ))}

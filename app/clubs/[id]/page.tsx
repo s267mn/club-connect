@@ -1,26 +1,25 @@
 import { supabase } from '@/lib/supabase';
 import ClubMembers from './ClubMembers';
+import { ArrowLeft } from 'lucide-react';
 
 export default async function ClubDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-
   const { data: club, error } = await supabase.from('clubs').select('*').eq('id', id).single();
 
-  if (error || !club) {
-    return <div className="p-8 text-[var(--magenta)]">Club not found.</div>;
-  }
+  if (error || !club) return <div className="p-8 text-red-600">Club not found.</div>;
 
   return (
-    <main className="min-h-screen px-8 py-16 md:px-16">
-      <div className="max-w-3xl mb-12 fade-up">
-        <a href="/clubs" className="font-mono text-xs uppercase tracking-widest text-[var(--steel)] hover:text-[var(--cyan)] transition-colors">&larr; Registry</a>
-        <h1 className="font-display text-3xl md:text-4xl text-[var(--gold)] glow-gold mt-4 mb-3">{club.name}</h1>
-        <p className="text-[var(--steel)] max-w-xl">{club.description}</p>
+    <main className="p-6 md:p-10 max-w-5xl">
+      <a href="/clubs" className="inline-flex items-center gap-1.5 text-sm text-[var(--ink-dim)] hover:text-[var(--ink)] mb-6 fade-up">
+        <ArrowLeft size={14} /> Registry
+      </a>
+
+      <div className="card p-6 md:p-8 mb-6 fade-up">
+        <h1 className="font-display text-2xl mb-2">{club.name}</h1>
+        <p className="text-[var(--ink-dim)] max-w-xl">{club.description}</p>
       </div>
 
-      <div className="max-w-3xl">
-        <ClubMembers clubId={club.id} />
-      </div>
+      <ClubMembers clubId={club.id} />
     </main>
   );
 }

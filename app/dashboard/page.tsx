@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
+import { LayoutDashboard, Check, X } from 'lucide-react';
 
 type Club = { id: string; name: string; description: string; status: string; created_by: string };
 
@@ -16,23 +17,12 @@ export default function DashboardPage() {
     const init = async () => {
       const { data: sessionData } = await supabase.auth.getSession();
       const email = sessionData.session?.user.email;
-
-      if (!email) {
-        router.push('/login');
-        return;
-      }
-
+      if (!email) { router.push('/login'); return; }
       const { data: userRow } = await supabase.from('users').select('global_role').eq('email', email).single();
-
-      if (userRow?.global_role !== 'super_admin') {
-        router.push('/');
-        return;
-      }
-
+      if (userRow?.global_role !== 'super_admin') { router.push('/'); return; }
       setChecking(false);
       fetchPendingClubs();
     };
-
     init();
   }, [router]);
 
@@ -54,35 +44,35 @@ export default function DashboardPage() {
     fetchPendingClubs();
   };
 
-  if (checking || loading) return <div className="min-h-screen flex items-center justify-center font-mono text-sm text-[var(--steel)]">Loading...</div>;
+  if (checking || loading) return <div className="min-h-screen flex items-center justify-center text-sm text-[var(--ink-dim)]">Loading...</div>;
 
   return (
-    <main className="min-h-screen px-8 py-16 md:px-16">
-      <div className="max-w-3xl mb-12 fade-up">
-        <p className="font-mono text-xs tracking-[0.3em] uppercase text-[var(--steel)] mb-2">Super Admin</p>
-        <h1 className="font-display text-3xl md:text-4xl text-[var(--gold)] glow-gold">Pending Club Requests</h1>
+    <main className="p-6 md:p-10 max-w-5xl">
+      <div className="flex items-center gap-2 mb-8 fade-up">
+        <LayoutDashboard className="text-[var(--peach-ink)]" size={22} />
+        <h1 className="font-display text-2xl">Pending Club Requests</h1>
       </div>
 
-      <div className="max-w-3xl">
-        {clubs.length === 0 ? (
-          <p className="text-[var(--steel)] panel rounded-lg p-6 fade-up">No pending requests right now.</p>
-        ) : (
-          <div className="grid gap-3">
-            {clubs.map((club) => (
-              <div key={club.id} className="panel rounded-lg p-6 flex justify-between items-center fade-up">
-                <div>
-                  <h2 className="font-display text-xl mb-1">{club.name}</h2>
-                  <p className="text-[var(--steel)]">{club.description}</p>
-                </div>
-                <div className="flex gap-2 shrink-0">
-                  <button onClick={() => handleApprove(club)} className="btn-primary px-4 py-2 rounded-md text-sm">Approve</button>
-                  <button onClick={() => handleReject(club)} className="btn-ghost px-4 py-2 rounded-md text-sm hover:border-[var(--magenta)] hover:text-[var(--magenta)]">Reject</button>
-                </div>
+      {clubs.length === 0 ? (
+        <div className="card p-8 text-center fade-up">
+          <p className="text-[var(--ink-dim)]">No pending requests right now.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {clubs.map((club) => (
+            <div key={club.id} className="card p-6 flex justify-between items-center fade-up">
+              <div>
+                <h2 className="font-display text-lg mb-1">{club.name}</h2>
+                <p className="text-sm text-[var(--ink-dim)]">{club.description}</p>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+              <div className="flex gap-2 shrink-0">
+                <button onClick={() => handleApprove(club)} className="btn-primary px-4 py-2 text-sm inline-flex items-center gap-1"><Check size={14} /> Approve</button>
+                <button onClick={() => handleReject(club)} className="btn-ghost px-4 py-2 text-sm inline-flex items-center gap-1"><X size={14} /> Reject</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </main>
   );
 }

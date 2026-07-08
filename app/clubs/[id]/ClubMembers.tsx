@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useRouter } from 'next/navigation';
 import SubmitContribution from './SubmitContribution';
 import VerifyContributions from './VerifyContributions';
+import { UserPlus, Clock, Check, X } from 'lucide-react';
 
 type Member = { role: string; users: { name: string; email: string } | null };
 type JoinRequest = { id: string; user_id: string; role_requested: string; message: string | null; users: { name: string; email: string } | null };
@@ -18,18 +20,22 @@ export default function ClubMembers({ clubId }: { clubId: string }) {
   const [joinMessage, setJoinMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [processingIds, setProcessingIds] = useState<string[]>([]);
+  const router = useRouter();
 
   const loadEverything = async () => {
     setLoading(true);
     const { data: sessionData } = await supabase.auth.getSession();
     const email = sessionData.session?.user.email;
 
-    let currentUserId: string | null = null;
-    if (email) {
-      const { data: userRow } = await supabase.from('users').select('id').eq('email', email).single();
-      currentUserId = userRow?.id ?? null;
-      setUserId(currentUserId);
+    if (!email) {
+      router.push('/login');
+      return;
     }
+
+    let currentUserId: string | null = null;
+    const { data: userRow } = await supabase.from('users').select('id').eq('email', email).single();
+    currentUserId = userRow?.id ?? null;
+    setUserId(currentUserId);
 
     const { data: memberRows } = await supabase.from('club_members').select('role, users(name, email)').eq('club_id', clubId);
     setMembers((memberRows as any) ?? []);
@@ -81,29 +87,31 @@ export default function ClubMembers({ clubId }: { clubId: string }) {
     await supabase.from('club_join_requests').update({ status: 'rejected' }).eq('id', requestId);
   };
 
-  if (loading) return <div className="font-mono text-sm text-[var(--steel)]">Loading...</div>;
+  if (loading) return <div className="text-sm text-[var(--ink-dim)]">Loading...</div>;
 
   return (
     <div>
       {myStatus === 'none' && userId && !showJoinForm && (
-        <button onClick={() => setShowJoinForm(true)} className="btn-primary px-5 py-2.5 rounded-md mb-10 fade-up">Request to Join</button>
+        <button onClick={() => setShowJoinForm(true)} className="btn-primary px-5 py-2.5 mb-6 inline-flex items-center gap-2 text-sm fade-up">
+          <UserPlus size={16} /> Request to Join
+        </button>
       )}
 
       {myStatus === 'none' && userId && showJoinForm && (
-        <div className="panel rounded-lg p-6 max-w-md mb-10 fade-up">
-          <h3 className="font-display text-lg text-[var(--cyan)] mb-3">Request to Join as: Member</h3>
-          <textarea placeholder="Why do you want to join? (optional)" value={joinMessage} onChange={(e) => setJoinMessage(e.target.value)} className="w-full p-3 mb-3 bg-transparent border border-[rgba(139,149,168,0.4)] rounded-md focus:border-[var(--cyan)] focus:outline-none transition-colors text-sm" rows={3} />
+        <div className="card p-6 max-w-md mb-6 fade-up">
+          <h3 className="font-display text-lg mb-3">Request to Join</h3>
+          <textarea placeholder="Why do you want to join? (optional)" value={joinMessage} onChange={(e) => setJoinMessage(e.target.value)} className="w-full p-3 mb-3 bg-transparent border border-[var(--border)] rounded-xl text-sm focus:border-[var(--peach-ink)] focus:outline-none" rows={3} />
           <div className="flex gap-2">
-            <button onClick={handleSubmitJoinRequest} disabled={submitting} className="btn-primary px-4 py-2 rounded-md text-sm disabled:opacity-50">{submitting ? 'Submitting...' : 'Submit Request'}</button>
-            <button onClick={() => setShowJoinForm(false)} className="btn-ghost px-4 py-2 rounded-md text-sm">Cancel</button>
+            <button onClick={handleSubmitJoinRequest} disabled={submitting} className="btn-primary px-4 py-2 text-sm disabled:opacity-50">{submitting ? 'Submitting...' : 'Submit Request'}</button>
+            <button onClick={() => setShowJoinForm(false)} className="btn-ghost px-4 py-2 text-sm">Cancel</button>
           </div>
         </div>
       )}
 
       {myStatus === 'pending' && (
-        <div className="panel rounded-lg p-5 mb-10 flex items-center gap-3 fade-up">
-          <span className="badge-pending">...</span>
-          <p className="text-sm text-[var(--steel)]">Your request to join is pending approval.</p>
+        <div className="card-tint bg-[var(--peach)] p-5 mb-6 flex items-center gap-3 fade-up">
+          <Clock className="icon-spin text-[var(--peach-ink)]" size={18} />
+          <p className="text-sm text-[var(--peach-ink)]">Your request to join is pending approval.</p>
         </div>
       )}
 
@@ -112,21 +120,20 @@ export default function ClubMembers({ clubId }: { clubId: string }) {
       {myStatus === 'admin' && <VerifyContributions clubId={clubId} />}
 
       {myStatus === 'admin' && pendingRequests.length > 0 && (
-        <div className="mb-12 fade-up">
-          <h2 className="font-display text-xl text-[var(--gold)] glow-gold mb-4">Pending Join Requests</h2>
-          <div className="grid gap-3">
+        <div className="mb-8 fade-up">
+          <h2 className="text-sm font-semibold text-[var(--ink-dim)] mb-4 uppercase tracking-wide">Pending Join Requests</h2>
+          <div className="space-y-3">
             {pendingRequests.map((req) => (
-              <div key={req.id} className="panel rounded-lg p-5">
+              <div key={req.id} className="card p-5">
                 <div className="flex justify-between items-start gap-4">
                   <div>
-                    <p className="font-medium">{req.users?.name}</p>
-                    <p className="text-sm text-[var(--steel)]">{req.users?.email}</p>
-                    <p className="text-sm text-[var(--steel)] capitalize mt-1">Requested role: {req.role_requested}</p>
-                    {req.message && <p className="text-sm text-[var(--text)] mt-2 italic">&quot;{req.message}&quot;</p>}
+                    <p className="font-medium text-sm">{req.users?.name}</p>
+                    <p className="text-xs text-[var(--ink-dim)]">{req.users?.email}</p>
+                    {req.message && <p className="text-sm text-[var(--ink)] mt-2 italic">&quot;{req.message}&quot;</p>}
                   </div>
                   <div className="flex gap-2 shrink-0">
-                    <button onClick={() => handleApprove(req)} className="btn-primary px-3 py-1.5 rounded-md text-sm">Approve</button>
-                    <button onClick={() => handleReject(req.id)} className="btn-ghost px-3 py-1.5 rounded-md text-sm hover:border-[var(--magenta)] hover:text-[var(--magenta)]">Reject</button>
+                    <button onClick={() => handleApprove(req)} className="btn-primary px-3 py-1.5 text-sm inline-flex items-center gap-1"><Check size={14} /> Approve</button>
+                    <button onClick={() => handleReject(req.id)} className="btn-ghost px-3 py-1.5 text-sm inline-flex items-center gap-1"><X size={14} /> Reject</button>
                   </div>
                 </div>
               </div>
@@ -135,15 +142,15 @@ export default function ClubMembers({ clubId }: { clubId: string }) {
         </div>
       )}
 
-      <h2 className="font-display text-xl text-[var(--text)] mb-4 fade-up">Members</h2>
-      <div className="grid gap-2">
+      <h2 className="text-sm font-semibold text-[var(--ink-dim)] mb-4 uppercase tracking-wide">Members</h2>
+      <div className="card divide-y divide-[var(--border)]">
         {members.map((m, i) => (
-          <div key={i} className="panel rounded-lg px-5 py-3 flex justify-between items-center fade-up" style={{ animationDelay: `${i * 40}ms` }}>
-            <span>{m.users?.name}</span>
-            <span className="font-mono text-xs uppercase tracking-widest text-[var(--steel)]">{m.role}</span>
+          <div key={i} className="px-5 py-3.5 flex justify-between items-center">
+            <span className="text-sm">{m.users?.name}</span>
+            <span className="text-xs uppercase tracking-wide text-[var(--ink-dim)]">{m.role}</span>
           </div>
         ))}
-        {members.length === 0 && <p className="text-[var(--steel)] panel rounded-lg p-5">No members yet.</p>}
+        {members.length === 0 && <p className="px-5 py-4 text-sm text-[var(--ink-dim)]">No members yet.</p>}
       </div>
     </div>
   );

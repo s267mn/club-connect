@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
+import { LogIn } from 'lucide-react';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -13,30 +14,31 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-
     const { error: loginError } = await supabase.auth.signInWithPassword({ email, password });
-
-    if (loginError) {
-      setError(loginError.message);
-      return;
-    }
-
+    if (loginError) { setError(loginError.message); return; }
     router.push('/clubs');
   };
 
   return (
-    <main className="min-h-screen flex items-center justify-center px-8 py-20">
-      <form onSubmit={handleLogin} className="panel rounded-lg p-8 w-full max-w-sm fade-up">
-        <p className="font-mono text-xs tracking-[0.3em] uppercase text-[var(--steel)] mb-2">Welcome Back</p>
-        <h1 className="font-display text-2xl text-[var(--gold)] glow-gold mb-6">Log In</h1>
+    <main className="min-h-screen flex items-center justify-center p-6">
+      <form onSubmit={handleLogin} className="card p-8 w-full max-w-sm fade-up">
+        <div className="flex items-center gap-2 mb-1">
+          <LogIn className="text-[var(--peach-ink)]" size={20} />
+          <h1 className="font-display text-2xl">Log In</h1>
+        </div>
+        <p className="text-sm text-[var(--ink-dim)] mb-6">Welcome back.</p>
 
-        <input type="email" placeholder="you@nitk.edu.in" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full p-3 mb-3 bg-transparent border border-[rgba(139,149,168,0.4)] rounded-md focus:border-[var(--gold)] focus:outline-none transition-colors" required />
+        <input type="email" placeholder="you@nitk.edu.in" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full p-3 mb-3 bg-transparent border border-[var(--border)] rounded-xl text-sm focus:border-[var(--peach-ink)] focus:outline-none" required />
+        <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full p-3 mb-4 bg-transparent border border-[var(--border)] rounded-xl text-sm focus:border-[var(--peach-ink)] focus:outline-none" required />
 
-        <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full p-3 mb-4 bg-transparent border border-[rgba(139,149,168,0.4)] rounded-md focus:border-[var(--gold)] focus:outline-none transition-colors" required />
+        {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
 
-        {error && <p className="text-[var(--magenta)] text-sm mb-4">{error}</p>}
+        <button type="submit" className="btn-primary w-full py-3 text-sm">Log In</button>
 
-        <button type="submit" className="btn-primary w-full py-3 rounded-md">Log In</button>
+        <p className="text-sm text-[var(--ink-dim)] text-center mt-4">
+          Don&apos;t have an account?{' '}
+          <a href="/signup" className="text-[var(--peach-ink)] hover:underline font-medium">Sign up</a>
+        </p>
       </form>
     </main>
   );
