@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Sora, Public_Sans } from "next/font/google";
 import "./globals.css";
 import Sidebar from './components/Sidebar';
+import NotificationBell from './components/NotificationBell';
 
 const sora = Sora({
   variable: "--font-display",
@@ -33,6 +34,7 @@ export default function RootLayout({
           <div className="blob blob-3" />
         </div>
         <div className="flex min-h-screen">
+          <NotificationBell />
           <Sidebar />
           <div className="flex-1 min-w-0">{children}</div>
         </div>

@@ -72,21 +72,44 @@ export default function ClubMembers({ clubId }: { clubId: string }) {
   };
 
   const handleApprove = async (request: JoinRequest) => {
-    if (processingIds.includes(request.id)) return;
-    setProcessingIds((prev) => [...prev, request.id]);
-    setPendingRequests((prev) => prev.filter((r) => r.id !== request.id));
-    const { error: insertError } = await supabase.from('club_members').insert({ club_id: clubId, user_id: request.user_id, role: 'member' });
-    if (!insertError) await supabase.from('club_join_requests').update({ status: 'approved' }).eq('id', request.id);
-    loadEverything();
-  };
+  if (processingIds.includes(request.id)) return;
+  setProcessingIds((prev) => [...prev, request.id]);
+  setPendingRequests((prev) => prev.filter((r) => r.id !== request.id));
 
-  const handleReject = async (requestId: string) => {
-    if (processingIds.includes(requestId)) return;
-    setProcessingIds((prev) => [...prev, requestId]);
-    setPendingRequests((prev) => prev.filter((r) => r.id !== requestId));
-    await supabase.from('club_join_requests').update({ status: 'rejected' }).eq('id', requestId);
-  };
+  const { error: insertError } = await supabase.from('club_members').insert({ club_id: clubId, user_id: request.user_id, role: 'member' });
 
+  if (!insertError) {
+    await supabase.from('club_join_requests').update({ status: 'approved' }).eq('id', request.id);
+
+    const { error: notifError } = await supabase.from('notifications').insert({
+      user_id: request.user_id,
+      message: `You've been approved as a member!`,
+      link: `/clubs/${clubId}`,
+    });
+    if (notifError) console.error('Notification insert failed (approve):', notifError);
+  } else {
+    console.error('club_members insert failed:', insertError);
+  }
+
+  loadEverything();
+};
+
+const handleReject = async (request: JoinRequest) => {
+  if (processingIds.includes(request.id)) return;
+  setProcessingIds((prev) => [...prev, request.id]);
+  setPendingRequests((prev) => prev.filter((r) => r.id !== request.id));
+
+  await supabase.from('club_join_requests').update({ status: 'rejected' }).eq('id', request.id);
+
+  const { error: notifError } = await supabase.from('notifications').insert({
+    user_id: request.user_id,
+    message: `Your request to join was not approved this time.`,
+    link: `/clubs/${clubId}`,
+  });
+  if (notifError) console.error('Notification insert failed (reject):', notifError);
+
+  loadEverything();
+};
   if (loading) return <div className="text-sm text-[var(--ink-dim)]">Loading...</div>;
 
   return (
@@ -133,7 +156,7 @@ export default function ClubMembers({ clubId }: { clubId: string }) {
                   </div>
                   <div className="flex gap-2 shrink-0">
                     <button onClick={() => handleApprove(req)} className="btn-primary px-3 py-1.5 text-sm inline-flex items-center gap-1"><Check size={14} /> Approve</button>
-                    <button onClick={() => handleReject(req.id)} className="btn-ghost px-3 py-1.5 text-sm inline-flex items-center gap-1"><X size={14} /> Reject</button>
+                    <button onClick={() => handleReject(req)} className="btn-ghost px-3 py-1.5 text-sm inline-flex items-center gap-1"><X size={14} /> Reject</button>
                   </div>
                 </div>
               </div>
