@@ -5,9 +5,17 @@ import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import { PlusCircle, Clock } from 'lucide-react';
 
+const CATEGORIES = [
+  'Technical', 'Cultural', 'Arts & Design', 'Sports & Fitness',
+  'Literary & Debate', 'Music & Dance', 'Social Service',
+  'Entrepreneurship', 'Robotics & Electronics', 'Photography & Film',
+  'Gaming & Esports', 'Other',
+];
+
 export default function NewClubRequestPage() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [category, setCategory] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
@@ -33,7 +41,7 @@ export default function NewClubRequestPage() {
 
     const { data: clubData, error: insertError } = await supabase
       .from('clubs')
-      .insert({ name, description, status: 'pending', created_by: userId })
+      .insert({ name, description, category, status: 'pending', created_by: userId })
       .select('id')
       .single();
     if (insertError) { setError(insertError.message); return; }
@@ -75,7 +83,12 @@ export default function NewClubRequestPage() {
         <p className="text-sm text-[var(--ink-dim)] mb-6">Your request will be reviewed before it goes live.</p>
 
         <input type="text" placeholder="Club name" value={name} onChange={(e) => setName(e.target.value)} className="w-full p-3 mb-3 bg-transparent border border-[var(--border)] rounded-xl text-sm focus:border-[var(--peach-ink)] focus:outline-none" required />
-        <textarea placeholder="Description" value={description} onChange={(e) => setDescription(e.target.value)} className="w-full p-3 mb-4 bg-transparent border border-[var(--border)] rounded-xl text-sm focus:border-[var(--peach-ink)] focus:outline-none" rows={3} />
+        <textarea placeholder="Description" value={description} onChange={(e) => setDescription(e.target.value)} className="w-full p-3 mb-3 bg-transparent border border-[var(--border)] rounded-xl text-sm focus:border-[var(--peach-ink)] focus:outline-none" rows={3} />
+
+        <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full p-3 mb-4 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-sm focus:border-[var(--peach-ink)] focus:outline-none" required>
+          <option value="">Select a category</option>
+          {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+        </select>
 
         {error && <p className="text-red-600 text-sm mb-3">{error}</p>}
 

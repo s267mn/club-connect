@@ -72,48 +72,52 @@ export default function ClubMembers({ clubId }: { clubId: string }) {
   };
 
   const handleApprove = async (request: JoinRequest) => {
-  if (processingIds.includes(request.id)) return;
-  setProcessingIds((prev) => [...prev, request.id]);
-  setPendingRequests((prev) => prev.filter((r) => r.id !== request.id));
+    if (processingIds.includes(request.id)) return;
+    setProcessingIds((prev) => [...prev, request.id]);
+    setPendingRequests((prev) => prev.filter((r) => r.id !== request.id));
 
-  const { error: insertError } = await supabase.from('club_members').insert({ club_id: clubId, user_id: request.user_id, role: 'member' });
+    const { error: insertError } = await supabase.from('club_members').insert({ club_id: clubId, user_id: request.user_id, role: 'member' });
 
-  if (!insertError) {
-    await supabase.from('club_join_requests').update({ status: 'approved' }).eq('id', request.id);
+    if (!insertError) {
+      await supabase.from('club_join_requests').update({ status: 'approved' }).eq('id', request.id);
+
+      const { error: notifError } = await supabase.from('notifications').insert({
+        user_id: request.user_id,
+        message: `You've been approved as a member!`,
+        link: `/clubs/${clubId}`,
+      });
+      if (notifError) console.error('Notification insert failed (approve):', notifError);
+    } else {
+      console.error('club_members insert failed:', insertError);
+    }
+
+    loadEverything();
+  };
+
+  const handleReject = async (request: JoinRequest) => {
+    if (processingIds.includes(request.id)) return;
+    setProcessingIds((prev) => [...prev, request.id]);
+    setPendingRequests((prev) => prev.filter((r) => r.id !== request.id));
+
+    await supabase.from('club_join_requests').update({ status: 'rejected' }).eq('id', request.id);
 
     const { error: notifError } = await supabase.from('notifications').insert({
       user_id: request.user_id,
-      message: `You've been approved as a member!`,
+      message: `Your request to join was not approved this time.`,
       link: `/clubs/${clubId}`,
     });
-    if (notifError) console.error('Notification insert failed (approve):', notifError);
-  } else {
-    console.error('club_members insert failed:', insertError);
-  }
+    if (notifError) console.error('Notification insert failed (reject):', notifError);
 
-  loadEverything();
-};
+    loadEverything();
+  };
 
-const handleReject = async (request: JoinRequest) => {
-  if (processingIds.includes(request.id)) return;
-  setProcessingIds((prev) => [...prev, request.id]);
-  setPendingRequests((prev) => prev.filter((r) => r.id !== request.id));
-
-  await supabase.from('club_join_requests').update({ status: 'rejected' }).eq('id', request.id);
-
-  const { error: notifError } = await supabase.from('notifications').insert({
-    user_id: request.user_id,
-    message: `Your request to join was not approved this time.`,
-    link: `/clubs/${clubId}`,
-  });
-  if (notifError) console.error('Notification insert failed (reject):', notifError);
-
-  loadEverything();
-};
   if (loading) return <div className="text-sm text-[var(--ink-dim)]">Loading...</div>;
 
   return (
     <div>
+      {/* Pending contribution verification — always on top for admins */}
+      {myStatus === 'admin' && <VerifyContributions clubId={clubId} />}
+
       {myStatus === 'none' && userId && !showJoinForm && (
         <button onClick={() => setShowJoinForm(true)} className="btn-primary px-5 py-2.5 mb-6 inline-flex items-center gap-2 text-sm fade-up">
           <UserPlus size={16} /> Request to Join
@@ -138,10 +142,6 @@ const handleReject = async (request: JoinRequest) => {
         </div>
       )}
 
-      {(myStatus === 'member' || myStatus === 'admin') && userId && <SubmitContribution clubId={clubId} userId={userId} />}
-
-      {myStatus === 'admin' && <VerifyContributions clubId={clubId} />}
-
       {myStatus === 'admin' && pendingRequests.length > 0 && (
         <div className="mb-8 fade-up">
           <h2 className="text-sm font-semibold text-[var(--ink-dim)] mb-4 uppercase tracking-wide">Pending Join Requests</h2>
@@ -165,15 +165,26 @@ const handleReject = async (request: JoinRequest) => {
         </div>
       )}
 
-      <h2 className="text-sm font-semibold text-[var(--ink-dim)] mb-4 uppercase tracking-wide">Members</h2>
-      <div className="card divide-y divide-[var(--border)]">
-        {members.map((m, i) => (
-          <div key={i} className="px-5 py-3.5 flex justify-between items-center">
-            <span className="text-sm">{m.users?.name}</span>
-            <span className="text-xs uppercase tracking-wide text-[var(--ink-dim)]">{m.role}</span>
+      {/* Submit Contribution + Members side by side */}
+      <div className="grid md:grid-cols-2 gap-4 items-start">
+        {(myStatus === 'member' || myStatus === 'admin') && userId ? (
+          <SubmitContribution clubId={clubId} userId={userId} />
+        ) : (
+          <div />
+        )}
+
+        <div className="card p-6 fade-up">
+          <h2 className="text-sm font-semibold text-[var(--ink-dim)] mb-4 uppercase tracking-wide">Members</h2>
+          <div className="max-h-80 overflow-y-auto border border-[var(--border)] rounded-xl divide-y divide-[var(--border)]">
+            {members.map((m, i) => (
+              <div key={i} className="px-5 py-3.5 flex justify-between items-center">
+                <span className="text-sm">{m.users?.name}</span>
+                <span className="text-xs uppercase tracking-wide text-[var(--ink-dim)]">{m.role}</span>
+              </div>
+            ))}
+            {members.length === 0 && <p className="px-5 py-4 text-sm text-[var(--ink-dim)]">No members yet.</p>}
           </div>
-        ))}
-        {members.length === 0 && <p className="px-5 py-4 text-sm text-[var(--ink-dim)]">No members yet.</p>}
+        </div>
       </div>
     </div>
   );
