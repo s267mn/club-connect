@@ -74,6 +74,10 @@ export default function Sidebar() {
             <Link href="/signup" className="btn-primary block text-center py-2.5 rounded-xl text-sm">Sign Up</Link>
           </div>
         )}
+
+        <p className="text-[11px] text-[var(--ink-dim)] opacity-60 mt-5 pt-4 border-t border-[var(--border)]">
+          Built by Samanvith
+        </p>
       </div>
     </aside>
   );
