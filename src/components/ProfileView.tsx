@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { FileCheck, TrendingUp, CheckCircle2, Paperclip } from 'lucide-react';
 import { calculateOverallRating } from '@/lib/ratingFormula';
+import RatingHistoryChart from '@/components/RatingHistoryChart';
 
 type Contribution = {
   id: string;
@@ -204,6 +205,10 @@ export default function ProfileView({ userId, isOwnProfile }: { userId: string; 
             </div>
           )}
         </div>
+      </div>
+
+      <div className="mt-4">
+        <RatingHistoryChart userId={userId} />
       </div>
     </div>
   );
