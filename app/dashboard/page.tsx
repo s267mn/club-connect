@@ -36,11 +36,27 @@ export default function DashboardPage() {
   const handleApprove = async (club: Club) => {
     await supabase.from('clubs').update({ status: 'approved' }).eq('id', club.id);
     await supabase.from('club_members').insert({ club_id: club.id, user_id: club.created_by, role: 'admin' });
+
+    const { error: notifError } = await supabase.from('notifications').insert({
+      user_id: club.created_by,
+      message: `Your club request "${club.name}" was approved!`,
+      link: `/clubs/${club.id}`,
+    });
+    if (notifError) console.error('Failed to notify club requester (approve):', notifError);
+
     fetchPendingClubs();
   };
 
   const handleReject = async (club: Club) => {
     await supabase.from('clubs').update({ status: 'rejected' }).eq('id', club.id);
+
+    const { error: notifError } = await supabase.from('notifications').insert({
+      user_id: club.created_by,
+      message: `Your club request "${club.name}" was not approved.`,
+      link: `/clubsrequest`,
+    });
+    if (notifError) console.error('Failed to notify club requester (reject):', notifError);
+
     fetchPendingClubs();
   };
 

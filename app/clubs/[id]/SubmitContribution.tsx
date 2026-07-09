@@ -31,6 +31,13 @@ export default function SubmitContribution({ clubId, userId }: { clubId: string;
 
     let fileUrl = '';
     if (file) {
+      const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
+      if (file.size > MAX_FILE_SIZE) {
+        setError('File is too large. Max size is 5MB.');
+        setSubmitting(false);
+        return;
+      }
+
       const fileName = `${userId}-${Date.now()}-${file.name}`;
       const { error: uploadError } = await supabase.storage.from('contribution-files').upload(fileName, file);
       if (uploadError) { setError(uploadError.message); setSubmitting(false); return; }

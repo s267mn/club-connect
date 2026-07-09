@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import { FileCheck, TrendingUp, CheckCircle2, Paperclip } from 'lucide-react';
+import { calculateOverallRating } from '@/lib/ratingFormula';
+import Leaderboard from '@/components/Leaderboard';
 
 type Contribution = {
   id: string;
@@ -57,6 +59,7 @@ export default function ProfilePage() {
   const [email, setEmail] = useState('');
   const [contributions, setContributions] = useState<Contribution[]>([]);
   const [skillRatings, setSkillRatings] = useState<SkillRating[]>([]);
+  const [clubsJoined, setClubsJoined] = useState(0);
   const [loading, setLoading] = useState(true);
   const [barsReady, setBarsReady] = useState(false);
   const router = useRouter();
@@ -96,6 +99,14 @@ export default function ProfilePage() {
         .sort((a, b) => b.averageScore - a.averageScore);
 
       setSkillRatings(ratings);
+
+      const { count: clubCount } = await supabase
+        .from('club_members')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userRow.id);
+
+      setClubsJoined(clubCount ?? 0);
+
       setLoading(false);
       requestAnimationFrame(() => setTimeout(() => setBarsReady(true), 100));
     };
@@ -107,89 +118,104 @@ export default function ProfilePage() {
 
   const initials = name.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase();
   const totalVerified = contributions.length;
-  const overallAverage = skillRatings.length > 0 ? Math.round(skillRatings.reduce((s, r) => s + r.averageScore, 0) / skillRatings.length) : 0;
+  const avgScoreAcrossAll = totalVerified > 0 ? contributions.reduce((s, c) => s + c.score, 0) / totalVerified : 0;
+
+  const overallRating = calculateOverallRating({
+    avgScore: avgScoreAcrossAll,
+    contributionCount: totalVerified,
+    distinctSkills: skillRatings.length,
+    clubsJoined,
+  });
 
   return (
-    <main className="p-6 md:p-10 max-w-5xl">
-      <div className="card p-6 md:p-8 mb-6 fade-up flex items-center gap-5">
-        <div className="avatar w-16 h-16 text-xl">{initials}</div>
+    <main className="p-6 md:p-10 max-w-6xl">
+      <div className="grid lg:grid-cols-[1fr_360px] gap-6 items-start">
         <div>
-          <p className="text-xs text-[var(--ink-dim)] mb-1">Welcome back</p>
-          <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="font-display text-2xl">{name}</h1>
-            <span className="pill-verified scale-in" style={{ animationDelay: '0.3s' }}>
-              <CheckCircle2 size={13} /> Verified
-            </span>
+          <div className="card p-6 md:p-8 mb-6 fade-up flex items-center gap-5">
+            <div className="avatar w-16 h-16 text-xl">{initials}</div>
+            <div>
+              <p className="text-xs text-[var(--ink-dim)] mb-1">Welcome back</p>
+              <div className="flex items-center gap-3 flex-wrap">
+                <h1 className="font-display text-2xl">{name}</h1>
+                <span className="pill-verified scale-in" style={{ animationDelay: '0.3s' }}>
+                  <CheckCircle2 size={13} /> Verified
+                </span>
+              </div>
+              <p className="text-sm text-[var(--ink-dim)] mt-1">{email}</p>
+            </div>
           </div>
-          <p className="text-sm text-[var(--ink-dim)] mt-1">{email}</p>
-        </div>
-      </div>
 
-      <div className="grid grid-cols-2 gap-4 mb-4">
-        <div className="card-tint bg-[var(--lavender)] p-6 fade-up relative overflow-hidden">
-          <FileCheck className="absolute top-5 right-5 text-[var(--lavender-ink)] opacity-40" size={22} />
-          <p className="text-sm text-[var(--ink-dim)] mb-2">Verified Contributions</p>
-          <p className="font-display text-3xl text-[var(--lavender-ink)]"><CountUp value={totalVerified} /></p>
-        </div>
-        <div className="card-tint bg-[var(--mint)] p-6 fade-up relative overflow-hidden">
-          <TrendingUp className="absolute top-5 right-5 text-[var(--mint-ink)] opacity-40" size={22} />
-          <p className="text-sm text-[var(--ink-dim)] mb-2">Overall Average</p>
-          <p className="font-display text-3xl text-[var(--mint-ink)]"><CountUp value={overallAverage} /></p>
-        </div>
-      </div>
-
-      <div className="grid md:grid-cols-2 gap-4">
-        <div className="card p-6 fade-up">
-          <h2 className="text-sm font-semibold text-[var(--ink-dim)] mb-4 uppercase tracking-wide">Skill Ratings</h2>
-          {skillRatings.length === 0 ? (
-            <div className="text-center py-4">
-              <EmptyIllustration />
-              <p className="text-sm text-[var(--ink-dim)]">No verified contributions yet.</p>
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div className="card-tint bg-[var(--lavender)] p-6 fade-up relative overflow-hidden">
+              <FileCheck className="absolute top-5 right-5 text-[var(--lavender-ink)] opacity-40" size={22} />
+              <p className="text-sm text-[var(--ink-dim)] mb-2">Verified Contributions</p>
+              <p className="font-display text-3xl text-[var(--lavender-ink)]"><CountUp value={totalVerified} /></p>
             </div>
-          ) : (
-            <div className="space-y-4">
-              {skillRatings.map((r) => (
-                <div key={r.skillName}>
-                  <div className="flex justify-between text-sm mb-1.5">
-                    <span>{r.skillName}</span>
-                    <span className="font-semibold">{r.averageScore}</span>
-                  </div>
-                  <div className="h-2 bg-[var(--border)] rounded-full overflow-hidden">
-                    <div className="bar-fill h-full bg-[var(--peach-ink)] rounded-full" style={{ width: barsReady ? `${r.averageScore}%` : '0%' }} />
-                  </div>
+            <div className="card-tint bg-[var(--mint)] p-6 fade-up relative overflow-hidden">
+              <TrendingUp className="absolute top-5 right-5 text-[var(--mint-ink)] opacity-40" size={22} />
+              <p className="text-sm text-[var(--ink-dim)] mb-2">Overall Rating</p>
+              <p className="font-display text-3xl text-[var(--mint-ink)]"><CountUp value={overallRating} /></p>
+            </div>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="card p-6 fade-up">
+              <h2 className="text-sm font-semibold text-[var(--ink-dim)] mb-4 uppercase tracking-wide">Skill Ratings</h2>
+              {skillRatings.length === 0 ? (
+                <div className="text-center py-4">
+                  <EmptyIllustration />
+                  <p className="text-sm text-[var(--ink-dim)]">No verified contributions yet.</p>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="card p-6 fade-up">
-          <h2 className="text-sm font-semibold text-[var(--ink-dim)] mb-4 uppercase tracking-wide">Contribution History</h2>
-          {contributions.length === 0 ? (
-            <div className="text-center py-4">
-              <EmptyIllustration />
-              <p className="text-sm text-[var(--ink-dim)]">Nothing here yet &mdash; join a club and submit your work.</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {contributions.map((c, i) => (
-                <div key={c.id} className={`pb-4 ${i !== contributions.length - 1 ? 'border-b border-[var(--border)]' : ''}`}>
-                  <div className="flex justify-between items-start gap-3">
-                    <div>
-                      <p className="font-medium text-sm">{c.title}</p>
-                      <p className="text-xs text-[var(--ink-dim)] mt-0.5">{c.clubs?.name} &middot; {c.skills?.name}</p>
+              ) : (
+                <div className="space-y-4">
+                  {skillRatings.map((r) => (
+                    <div key={r.skillName}>
+                      <div className="flex justify-between text-sm mb-1.5">
+                        <span>{r.skillName}</span>
+                        <span className="font-semibold">{r.averageScore}</span>
+                      </div>
+                      <div className="h-2 bg-[var(--border)] rounded-full overflow-hidden">
+                        <div className="bar-fill h-full bg-[var(--peach-ink)] rounded-full" style={{ width: barsReady ? `${r.averageScore}%` : '0%' }} />
+                      </div>
                     </div>
-                    <span className="font-display text-lg shrink-0">{c.score}</span>
-                  </div>
-                  {c.file_url && (
-                    <a href={c.file_url} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--peach-ink)] hover:underline mt-1 inline-flex items-center gap-1">
-                      <Paperclip size={11} /> View proof
-                    </a>
-                  )}
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
-          )}
+
+            <div className="card p-6 fade-up">
+              <h2 className="text-sm font-semibold text-[var(--ink-dim)] mb-4 uppercase tracking-wide">Contribution History</h2>
+              {contributions.length === 0 ? (
+                <div className="text-center py-4">
+                  <EmptyIllustration />
+                  <p className="text-sm text-[var(--ink-dim)]">Nothing here yet &mdash; join a club and submit your work.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {contributions.map((c, i) => (
+                    <div key={c.id} className={`pb-4 ${i !== contributions.length - 1 ? 'border-b border-[var(--border)]' : ''}`}>
+                      <div className="flex justify-between items-start gap-3">
+                        <div>
+                          <p className="font-medium text-sm">{c.title}</p>
+                          <p className="text-xs text-[var(--ink-dim)] mt-0.5">{c.clubs?.name} &middot; {c.skills?.name}</p>
+                        </div>
+                        <span className="font-display text-lg shrink-0">{c.score}</span>
+                      </div>
+                      {c.file_url && (
+                        <a href={c.file_url} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--peach-ink)] hover:underline mt-1 inline-flex items-center gap-1">
+                          <Paperclip size={11} /> View proof
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <Leaderboard />
         </div>
       </div>
     </main>

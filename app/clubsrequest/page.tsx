@@ -31,8 +31,23 @@ export default function NewClubRequestPage() {
     setError('');
     if (!userId) { setError('Could not identify user.'); return; }
 
-    const { error: insertError } = await supabase.from('clubs').insert({ name, description, status: 'pending', created_by: userId });
+    const { data: clubData, error: insertError } = await supabase
+      .from('clubs')
+      .insert({ name, description, status: 'pending', created_by: userId })
+      .select('id')
+      .single();
     if (insertError) { setError(insertError.message); return; }
+
+    const { data: superAdminRow } = await supabase.from('users').select('id').eq('global_role', 'super_admin').single();
+    if (superAdminRow?.id) {
+      const { error: notifError } = await supabase.from('notifications').insert({
+        user_id: superAdminRow.id,
+        message: `New club request: "${name}"`,
+        link: `/dashboard`,
+      });
+      if (notifError) console.error('Failed to notify super admin:', notifError);
+    }
+
     setSuccess(true);
   };
 
