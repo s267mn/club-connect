@@ -32,9 +32,9 @@ export default function PublicProfilePage() {
 
   return (
     <main className="p-6 md:p-10 max-w-4xl">
-      <a href="javascript:history.back()" className="inline-flex items-center gap-1.5 text-sm text-[var(--ink-dim)] hover:text-[var(--ink)] mb-6 fade-up">
+      <button onClick={() => router.back()} className="inline-flex items-center gap-1.5 text-sm text-[var(--ink-dim)] hover:text-[var(--ink)] mb-6 fade-up">
         <ArrowLeft size={14} /> Back
-      </a>
+      </button>
       <ProfileView userId={viewedUserId} isOwnProfile={isOwnProfile} />
     </main>
   );
