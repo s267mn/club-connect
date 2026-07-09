@@ -7,7 +7,7 @@ import SubmitContribution from './SubmitContribution';
 import VerifyContributions from './VerifyContributions';
 import { UserPlus, Clock, Check, X } from 'lucide-react';
 
-type Member = { role: string; users: { name: string; email: string } | null };
+type Member = { user_id: string; role: string; users: { name: string; email: string } | null };
 type JoinRequest = { id: string; user_id: string; role_requested: string; message: string | null; users: { name: string; email: string } | null };
 
 export default function ClubMembers({ clubId }: { clubId: string }) {
@@ -37,7 +37,7 @@ export default function ClubMembers({ clubId }: { clubId: string }) {
     currentUserId = userRow?.id ?? null;
     setUserId(currentUserId);
 
-    const { data: memberRows } = await supabase.from('club_members').select('role, users(name, email)').eq('club_id', clubId);
+    const { data: memberRows } = await supabase.from('club_members').select('user_id, role, users(name, email)').eq('club_id', clubId);
     setMembers((memberRows as any) ?? []);
 
     if (currentUserId) {
@@ -177,7 +177,11 @@ export default function ClubMembers({ clubId }: { clubId: string }) {
           <h2 className="text-sm font-semibold text-[var(--ink-dim)] mb-4 uppercase tracking-wide">Members</h2>
           <div className="max-h-80 overflow-y-auto border border-[var(--border)] rounded-xl divide-y divide-[var(--border)]">
             {members.map((m, i) => (
-              <div key={i} className="px-5 py-3.5 flex justify-between items-center">
+              <div
+                key={i}
+                onClick={() => router.push(`/profile/${m.user_id}`)}
+                className="px-5 py-3.5 flex justify-between items-center cursor-pointer hover:bg-[rgba(0,0,0,0.03)] transition-colors"
+              >
                 <span className="text-sm">{m.users?.name}</span>
                 <span className="text-xs uppercase tracking-wide text-[var(--ink-dim)]">{m.role}</span>
               </div>

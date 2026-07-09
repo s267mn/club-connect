@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { Trophy, Medal } from 'lucide-react';
 import { calculateOverallRating } from '@/lib/ratingFormula';
@@ -10,6 +11,7 @@ type LeaderRow = { userId: string; name: string; value: number };
 type Skill = { id: string; name: string };
 
 export default function Leaderboard() {
+  const router = useRouter();
   const [tab, setTab] = useState<Tab>('overall');
   const [loading, setLoading] = useState(true);
   const [overallRows, setOverallRows] = useState<LeaderRow[]>([]);
@@ -176,9 +178,13 @@ export default function Leaderboard() {
             const row = rowsForTab[rankIdx];
             if (!row) return <div key={posIdx} className="flex-1 max-w-[90px]" />;
             return (
-              <div key={row.userId} className="flex-1 max-w-[90px] flex flex-col items-center">
+              <div
+                key={row.userId}
+                onClick={() => router.push(`/profile/${row.userId}`)}
+                className="flex-1 max-w-[90px] flex flex-col items-center cursor-pointer group"
+              >
                 <Medal size={20} className={medalColor(rankIdx)} />
-                <p className="text-xs font-medium text-center mt-1 truncate w-full" title={row.name}>{row.name}</p>
+                <p className="text-xs font-medium text-center mt-1 truncate w-full group-hover:underline" title={row.name}>{row.name}</p>
                 <p className="text-xs text-[var(--ink-dim)] mb-1.5">{row.value}</p>
                 <div
                   className={`w-full rounded-t-lg ${podiumBg[posIdx]} flex items-start justify-center pt-1.5`}
@@ -202,7 +208,11 @@ export default function Leaderboard() {
           <p className="px-4 py-8 text-sm text-[var(--ink-dim)] text-center">No data yet.</p>
         ) : (
           rowsForTab.slice(0, 20).map((row, i) => (
-            <div key={row.userId} className="px-4 py-3 flex items-center justify-between">
+            <div
+              key={row.userId}
+              onClick={() => router.push(`/profile/${row.userId}`)}
+              className="px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-[rgba(0,0,0,0.03)] transition-colors"
+            >
               <div className="flex items-center gap-3">
                 <span className={`font-display text-sm w-5 ${medalColor(i)}`}>
                   {i < 3 ? <Medal size={15} className={medalColor(i)} /> : `#${i + 1}`}
