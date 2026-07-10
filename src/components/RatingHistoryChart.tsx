@@ -42,7 +42,7 @@ export default function RatingHistoryChart({ userId }: { userId: string }) {
       let runningTotal = 0;
       const skillSet = new Set<string>();
 
-      history.push({ index: 0, rating: 0, title: 'Start', date: '' });
+      history.push({ index: 0, rating: 400, title: 'Start', date: '' });
 
       contribList.forEach((c: any, i: number) => {
         runningTotal += c.score;
@@ -91,22 +91,55 @@ export default function RatingHistoryChart({ userId }: { userId: string }) {
         <h2 className="text-sm font-semibold text-[var(--ink-dim)] uppercase tracking-wide">Rating History</h2>
       </div>
       <ResponsiveContainer width="100%" height={380}>
-        <LineChart data={points} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-          <XAxis dataKey="index" tick={{ fontSize: 11 }} stroke="var(--ink-dim)" tickFormatter={(v) => v === 0 ? '' : `#${v}`} />
-          <YAxis domain={[0, 'auto']} tick={{ fontSize: 11 }} stroke="var(--ink-dim)" />
-          <Tooltip
-            contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid var(--border)' }}
-            formatter={(value: any) => [value, 'Rating']}
-            labelFormatter={(_label, payload) => {
-              const p = payload?.[0]?.payload;
-              if (!p || p.index === 0) return '';
-              return `${p.title} · ${p.date}`;
-            }}
-          />
-          <Line type="linear" dataKey="rating" stroke="var(--peach-ink)" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
-        </LineChart>
-      </ResponsiveContainer>
+  <LineChart
+    data={points}
+    margin={{ top: 5, right: 10, left: -20, bottom: 0 }}
+  >
+    <CartesianGrid
+      strokeDasharray="3 3"
+      stroke="var(--border)"
+    />
+
+    <XAxis
+      dataKey="index"
+      tick={{ fontSize: 11 }}
+      stroke="var(--ink-dim)"
+      tickFormatter={(v) => (v === 0 ? '' : `#${v}`)}
+    />
+
+    <YAxis
+      domain={[
+        0,
+        (dataMax: number) => Math.ceil(dataMax / 100) * 100,
+      ]}
+      tick={{ fontSize: 11 }}
+      stroke="var(--ink-dim)"
+    />
+
+    <Tooltip
+      contentStyle={{
+        fontSize: 12,
+        borderRadius: 8,
+        border: '1px solid var(--border)',
+      }}
+      formatter={(value: any) => [value, 'Rating']}
+      labelFormatter={(_label, payload) => {
+        const p = payload?.[0]?.payload;
+        if (!p || p.index === 0) return 'Starting Rating';
+        return `${p.title} · ${p.date}`;
+      }}
+    />
+
+    <Line
+      type="linear"
+      dataKey="rating"
+      stroke="var(--peach-ink)"
+      strokeWidth={2}
+      dot={{ r: 3 }}
+      activeDot={{ r: 5 }}
+    />
+  </LineChart>
+</ResponsiveContainer>
     </div>
   );
 }
