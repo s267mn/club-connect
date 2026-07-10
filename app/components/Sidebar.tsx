@@ -9,7 +9,7 @@ import { Menu, X } from 'lucide-react';
 export default function Sidebar() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const [open, setOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -32,7 +32,7 @@ export default function Sidebar() {
     return () => listener.subscription.unsubscribe();
   }, []);
 
-  useEffect(() => { setMobileOpen(false); }, [pathname]);
+  useEffect(() => { setOpen(false); }, [pathname]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -46,9 +46,9 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* Mobile top bar with hamburger */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-40 flex items-center gap-3 px-4 py-3 bg-[var(--bg)]/90 backdrop-blur-md border-b border-[var(--border)]">
-        <button onClick={() => setMobileOpen(true)} aria-label="Open menu" className="p-2 -ml-2">
+      {/* Top bar with hamburger — always present, at every width */}
+      <div className="fixed top-0 left-0 right-0 z-40 flex items-center gap-3 px-4 py-3 bg-[var(--bg)]/90 backdrop-blur-md border-b border-[var(--border)]">
+        <button onClick={() => setOpen(true)} aria-label="Open menu" className="p-2 -ml-2">
           <Menu size={22} />
         </button>
         <Link href="/" className="font-display text-base font-bold">
@@ -56,27 +56,25 @@ export default function Sidebar() {
         </Link>
       </div>
 
-      {/* Spacer to push content below the fixed mobile top bar */}
-      <div className="lg:hidden h-[52px]" />
+      {/* Spacer so page content starts below the fixed top bar */}
+      <div className="h-[52px]" />
 
-      {/* Mobile overlay */}
-      {mobileOpen && (
-        <div className="lg:hidden fixed inset-0 bg-black/40 z-50" onClick={() => setMobileOpen(false)} />
+      {/* Overlay behind the drawer */}
+      {open && (
+        <div className="fixed inset-0 bg-black/40 z-50" onClick={() => setOpen(false)} />
       )}
 
-      {/* Sidebar itself — fixed drawer on mobile, static column on desktop */}
+      {/* Drawer — always fixed off-canvas by default, slides in on open, at every width */}
       <aside
-        className={`w-64 shrink-0 border-r border-[var(--border)] px-5 py-8 flex flex-col justify-between
-          fixed top-0 left-0 h-screen z-50 bg-[var(--bg)] transition-transform duration-200
-          lg:!transform-none lg:sticky`}
-        style={{ transform: mobileOpen ? 'translateX(0)' : 'translateX(-100%)' }}
+        className="w-64 border-r border-[var(--border)] px-5 py-8 flex flex-col justify-between fixed top-0 left-0 h-screen z-50 bg-[var(--bg)] transition-transform duration-200"
+        style={{ transform: open ? 'translateX(0)' : 'translateX(-100%)' }}
       >
         <div>
           <div className="flex items-center justify-between mb-10 px-2">
             <Link href="/" className="font-display text-lg font-bold">
               Club<span className="text-[var(--peach-ink)]">Connect</span>
             </Link>
-            <button onClick={() => setMobileOpen(false)} aria-label="Close menu" className="lg:hidden p-1">
+            <button onClick={() => setOpen(false)} aria-label="Close menu" className="p-1">
               <X size={20} />
             </button>
           </div>
