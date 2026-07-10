@@ -93,7 +93,12 @@ export default function NotificationBell() {
 
   const timeAgo = (dateStr: string | null) => {
     if (!dateStr) return '';
-    const diffMs = Date.now() - new Date(dateStr).getTime();
+    // Supabase timestamps without an explicit timezone are stored as UTC.
+    // Force-parse as UTC by appending 'Z' if there's no zone marker already,
+    // otherwise the browser assumes local time and skews the diff by your UTC offset.
+    const hasZone = /Z|[+-]\d{2}:?\d{2}$/.test(dateStr);
+    const normalized = hasZone ? dateStr : `${dateStr}Z`;
+    const diffMs = Date.now() - new Date(normalized).getTime();
     const mins = Math.floor(diffMs / 60000);
     if (mins < 1) return 'just now';
     if (mins < 60) return `${mins}m ago`;
