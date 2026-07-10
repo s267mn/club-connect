@@ -4,12 +4,12 @@ import { ArrowRight, ShieldCheck, Loader2 } from 'lucide-react';
 export default function Home() {
   return (
     <main className="p-6 md:p-10 max-w-5xl">
-      <div className="card p-8 md:p-12 mb-6 fade-up">
+      <div className="card p-6 sm:p-8 md:p-12 mb-6 fade-up">
         <p className="text-sm text-[var(--ink-dim)] mb-3">NITK Surathkal</p>
-        <h1 className="font-display text-4xl md:text-5xl leading-tight mb-4 max-w-2xl">
+        <h1 className="font-display text-2xl sm:text-3xl md:text-5xl leading-tight mb-4 max-w-2xl">
           Your club work, <span className="text-[var(--peach-ink)]">verified</span> and yours to keep.
         </h1>
-        <p className="text-[var(--ink-dim)] max-w-xl mb-8 leading-relaxed">
+        <p className="text-[var(--ink-dim)] max-w-xl mb-8 leading-relaxed text-sm sm:text-base">
           Every edit, event, and late-night build for your club &mdash; logged, signed off by someone who saw it happen, and ready to show off campus.
         </p>
         <div className="flex flex-wrap gap-3">

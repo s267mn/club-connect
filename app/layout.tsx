@@ -33,11 +33,11 @@ export default function RootLayout({
           <div className="blob blob-2" />
           <div className="blob blob-3" />
         </div>
-        <div className="flex min-h-screen">
-          <NotificationBell />
-          <Sidebar />
-          <div className="flex-1 min-w-0">{children}</div>
-        </div>
+
+        <NotificationBell />
+        <Sidebar />
+
+        <div className="lg:pl-64 min-h-screen">{children}</div>
       </body>
     </html>
   );

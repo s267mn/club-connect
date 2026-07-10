@@ -104,7 +104,7 @@ export default function NotificationBell() {
   };
 
   return (
-    <div className="fixed top-4 right-6 z-[60]" ref={dropdownRef}>
+    <div className="fixed top-3 right-4 lg:top-4 lg:right-6 z-[60]" ref={dropdownRef}>
       <button
         onClick={() => setOpen((o) => !o)}
         className="relative p-2 rounded-full hover:bg-[rgba(255,255,255,0.08)] transition-colors"
