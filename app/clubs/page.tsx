@@ -7,7 +7,12 @@ import { Users } from 'lucide-react';
 type Club = { id: string; name: string; description: string; category: string | null; logo_url: string | null };
 type MembershipMap = { [clubId: string]: 'member' | 'admin' };
 
-const tints = ['lavender', 'mint', 'peach', 'sky'];
+const tintStyles = [
+  { bg: 'bg-[var(--lavender)]', ink: 'text-[var(--lavender-ink)]' },
+  { bg: 'bg-[var(--mint)]', ink: 'text-[var(--mint-ink)]' },
+  { bg: 'bg-[var(--peach)]', ink: 'text-[var(--peach-ink)]' },
+  { bg: 'bg-[var(--sky)]', ink: 'text-[var(--sky-ink)]' },
+];
 
 export default function ClubsPage() {
   const [clubs, setClubs] = useState<Club[]>([]);
@@ -58,9 +63,9 @@ export default function ClubsPage() {
   return (
     <main className="p-6 md:p-10 max-w-5xl">
       <div className="mb-8 fade-up">
-        <p className="text-sm text-[var(--ink-dim)] mb-2">Registry</p>
-        <h1 className="font-display text-3xl mb-2">Explore Clubs</h1>
-        <p className="text-[var(--ink-dim)]">Every club here has been reviewed and approved.</p>
+        <p className="text-sm text-[var(--ink)] mb-2">Registry</p>
+        <h1 className="font-display text-3xl mb-2 text-[var(--ink)]">Explore Clubs</h1>
+        <p className="text-[var(--ink)]">Every club here has been reviewed and approved.</p>
       </div>
 
       {clubs.length === 0 && (
@@ -71,11 +76,11 @@ export default function ClubsPage() {
 
       <div className="grid md:grid-cols-2 gap-4">
         {clubs.map((club, i) => {
-          const tint = tints[i % tints.length];
+          const tint = tintStyles[i % tintStyles.length];
           const role = memberships[club.id];
 
           return (
-            <a key={club.id} href={`/clubs/${club.id}`} className={`card-tint bg-[var(--${tint})] p-6 fade-up block relative`} style={{ animationDelay: `${i * 60}ms` }}>
+            <a key={club.id} href={`/clubs/${club.id}`} className={`card-tint ${tint.bg} p-6 fade-up block relative`} style={{ animationDelay: `${i * 60}ms` }}>
               {role && (
                 <span className={`absolute top-4 right-4 text-[10px] font-semibold uppercase tracking-wide px-2 py-1 rounded-full ${role === 'admin' ? 'bg-[var(--peach-ink)] text-white' : 'bg-white/70 text-[var(--ink)]'}`}>
                   {role}
@@ -87,7 +92,7 @@ export default function ClubsPage() {
                   {club.logo_url ? (
                     <img src={club.logo_url} alt={club.name} className="w-full h-full object-cover" />
                   ) : (
-                    <Users className={`text-[var(--${tint}-ink)]`} size={28} />
+                    <Users className={tint.ink} size={28} />
                   )}
                 </div>
 

@@ -34,6 +34,8 @@ export default function RootLayout({
           <div className="blob blob-3" />
         </div>
 
+        <div className="fixed top-0 left-0 h-screen w-48 bg-[var(--peach-ink)] z-0 pointer-events-none" />
+
         <NotificationBell />
         <Sidebar />
 
