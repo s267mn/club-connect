@@ -3,7 +3,7 @@ import { ArrowRight, ShieldCheck, Loader2 } from 'lucide-react';
 
 export default function Home() {
   return (
-    <main className="p-6 md:p-10 max-w-5xl">
+    <main className="p-6 md:p-10 max-w-5xl mx-auto">
       <div className="card p-6 sm:p-8 md:p-12 mb-6 fade-up">
         <p className="text-sm text-[var(--ink-dim)] mb-3">NITK Surathkal</p>
         <h1 className="font-display text-2xl sm:text-3xl md:text-5xl leading-tight mb-4 max-w-2xl">
