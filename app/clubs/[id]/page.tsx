@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { calculateOverallRating } from '@/lib/ratingFormula';
 import ClubMembers from './ClubMembers';
 import ClubLogoUpload from '@/components/ClubLogoUpload';
+import ClubContributionFeed from '@/components/ClubContributionFeed';
 import { ArrowLeft, Users, FileCheck, Star } from 'lucide-react';
 
 type Club = { id: string; name: string; description: string; category: string | null; logo_url: string | null; created_by: string };
@@ -128,7 +129,7 @@ export default function ClubDetailPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-3 mt-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6">
           <div className="card-tint bg-[var(--lavender)] p-4 flex items-center gap-3">
             <Users className="text-[var(--lavender-ink)]" size={18} />
             <div>
@@ -154,6 +155,7 @@ export default function ClubDetailPage() {
       </div>
 
       <ClubMembers clubId={club.id} />
+      <ClubContributionFeed clubId={club.id} />
     </main>
   );
 }

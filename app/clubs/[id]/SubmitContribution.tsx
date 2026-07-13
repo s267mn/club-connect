@@ -92,7 +92,7 @@ export default function SubmitContribution({ clubId, userId }: { clubId: string;
 
       <label className="flex items-center gap-2 text-sm text-[var(--ink-dim)] mb-4 cursor-pointer border border-dashed border-[var(--border)] rounded-xl p-3 hover:border-[var(--peach-ink)] transition-colors">
         <Upload size={16} />
-        {file ? file.name : 'Attach proof (optional)'}
+        {file ? file.name : 'Attach a photo of your work (recommended)'}
         <input type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="hidden" />
       </label>
 

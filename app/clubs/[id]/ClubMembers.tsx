@@ -7,7 +7,7 @@ import SubmitContribution from './SubmitContribution';
 import VerifyContributions from './VerifyContributions';
 import { UserPlus, Clock, Check, X } from 'lucide-react';
 
-type Member = { user_id: string; role: string; users: { name: string; email: string } | null };
+type Member = { user_id: string; role: string; users: { name: string; email: string; avatar_url: string | null } | null };
 type JoinRequest = { id: string; user_id: string; role_requested: string; message: string | null; users: { name: string; email: string } | null };
 
 export default function ClubMembers({ clubId }: { clubId: string }) {
@@ -37,7 +37,7 @@ export default function ClubMembers({ clubId }: { clubId: string }) {
     currentUserId = userRow?.id ?? null;
     setUserId(currentUserId);
 
-    const { data: memberRows } = await supabase.from('club_members').select('user_id, role, users(name, email)').eq('club_id', clubId);
+    const { data: memberRows } = await supabase.from('club_members').select('user_id, role, users(name, email, avatar_url)').eq('club_id', clubId);
     setMembers((memberRows as any) ?? []);
 
     if (currentUserId) {
@@ -176,16 +176,28 @@ export default function ClubMembers({ clubId }: { clubId: string }) {
         <div className="card p-6 fade-up">
           <h2 className="text-sm font-semibold text-[var(--ink-dim)] mb-4 uppercase tracking-wide">Members</h2>
           <div className="max-h-80 overflow-y-auto border border-[var(--border)] rounded-xl divide-y divide-[var(--border)]">
-            {members.map((m, i) => (
-              <div
-                key={i}
-                onClick={() => router.push(`/profile/${m.user_id}`)}
-                className="px-5 py-3.5 flex justify-between items-center cursor-pointer hover:bg-[rgba(0,0,0,0.03)] transition-colors"
-              >
-                <span className="text-sm">{m.users?.name}</span>
-                <span className="text-xs uppercase tracking-wide text-[var(--ink-dim)]">{m.role}</span>
-              </div>
-            ))}
+            {members.map((m, i) => {
+              const initials = (m.users?.name ?? '?').split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase();
+              return (
+                <div
+                  key={i}
+                  onClick={() => router.push(`/profile/${m.user_id}`)}
+                  className="px-5 py-3.5 flex justify-between items-center cursor-pointer hover:bg-[rgba(0,0,0,0.03)] transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="avatar w-8 h-8 text-xs overflow-hidden shrink-0">
+                      {m.users?.avatar_url ? (
+                        <img src={m.users.avatar_url} alt={m.users.name} className="w-full h-full object-cover" />
+                      ) : (
+                        initials
+                      )}
+                    </span>
+                    <span className="text-sm">{m.users?.name}</span>
+                  </div>
+                  <span className="text-xs uppercase tracking-wide text-[var(--ink-dim)]">{m.role}</span>
+                </div>
+              );
+            })}
             {members.length === 0 && <p className="px-5 py-4 text-sm text-[var(--ink-dim)]">No members yet.</p>}
           </div>
         </div>

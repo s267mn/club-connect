@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { FileCheck, TrendingUp, CheckCircle2, Paperclip } from 'lucide-react';
 import { calculateOverallRating } from '@/lib/ratingFormula';
 import RatingHistoryChart from '@/components/RatingHistoryChart';
+import AvatarUpload from '@/components/AvatarUpload';
 
 type Contribution = {
   id: string;
@@ -54,6 +55,7 @@ function EmptyIllustration() {
 export default function ProfileView({ userId, isOwnProfile }: { userId: string; isOwnProfile: boolean }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [contributions, setContributions] = useState<Contribution[]>([]);
   const [skillRatings, setSkillRatings] = useState<SkillRating[]>([]);
@@ -65,11 +67,12 @@ export default function ProfileView({ userId, isOwnProfile }: { userId: string; 
     const load = async () => {
       setLoading(true);
 
-      const { data: userRow, error: userError } = await supabase.from('users').select('id, name, email').eq('id', userId).single();
+      const { data: userRow, error: userError } = await supabase.from('users').select('id, name, email, avatar_url').eq('id', userId).single();
       if (userError || !userRow) { setNotFound(true); setLoading(false); return; }
 
       setName(userRow.name);
       setEmail(userRow.email);
+      setAvatarUrl(userRow.avatar_url ?? null);
 
       const { data: contribs } = await supabase
         .from('contributions')
@@ -126,7 +129,13 @@ export default function ProfileView({ userId, isOwnProfile }: { userId: string; 
   return (
     <div>
       <div className="card p-6 md:p-8 mb-6 fade-up flex items-center gap-5">
-        <div className="avatar w-16 h-16 text-xl">{initials}</div>
+        <div className="avatar w-16 h-16 text-xl overflow-hidden">
+          {avatarUrl ? (
+            <img src={avatarUrl} alt={name} className="w-full h-full object-cover" />
+          ) : (
+            initials
+          )}
+        </div>
         <div>
           <p className="text-xs text-[var(--ink-dim)] mb-1">{isOwnProfile ? 'Welcome back' : 'Student Profile'}</p>
           <div className="flex items-center gap-3 flex-wrap">
@@ -136,6 +145,11 @@ export default function ProfileView({ userId, isOwnProfile }: { userId: string; 
             </span>
           </div>
           {isOwnProfile && <p className="text-sm text-[var(--ink-dim)] mt-1">{email}</p>}
+          {isOwnProfile && (
+            <div className="mt-2">
+              <AvatarUpload userId={userId} currentAvatarUrl={avatarUrl} onUploaded={(url) => setAvatarUrl(url)} />
+            </div>
+          )}
         </div>
       </div>
 
