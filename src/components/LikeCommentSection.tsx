@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import { Heart, MessageCircle, Send } from 'lucide-react';
+import { enforceWordLimit, TEXT_LIMITS } from '@/lib/textLimits';
 
 type Comment = {
   id: string;
@@ -114,9 +115,10 @@ export default function LikeCommentSection({
   }, []);
 
   const handleCommentInputChange = (value: string, cursorPos: number) => {
-    setCommentText(value);
+    const capped = value.slice(0, TEXT_LIMITS.comment);
+    setCommentText(capped);
 
-    const textBeforeCursor = value.slice(0, cursorPos);
+    const textBeforeCursor = capped.slice(0, cursorPos);
     const atIdx = textBeforeCursor.lastIndexOf('@');
 
     if (atIdx === -1) {
@@ -437,9 +439,10 @@ export default function LikeCommentSection({
                         <input
                           type="text"
                           value={replyText}
-                          onChange={(e) => setReplyText(e.target.value)}
+                          onChange={(e) => setReplyText(e.target.value.slice(0, TEXT_LIMITS.comment))}
                           onKeyDown={(e) => { if (e.key === 'Enter') handleReplySubmit(c.id, c.user_id); }}
                           placeholder={`Reply to ${c.users?.name ?? 'this comment'}...`}
+                          maxLength={TEXT_LIMITS.comment}
                           className="flex-1 p-2 text-sm bg-transparent border border-[var(--border)] rounded-lg focus:border-[var(--peach-ink)] focus:outline-none"
                           autoFocus
                         />
@@ -495,6 +498,7 @@ export default function LikeCommentSection({
                   onChange={(e) => handleCommentInputChange(e.target.value, e.target.selectionStart ?? e.target.value.length)}
                   onKeyDown={(e) => { if (e.key === 'Enter' && mentionQuery === null) handleCommentSubmit(); }}
                   placeholder="Write a comment... use @ to mention someone"
+                  maxLength={TEXT_LIMITS.comment}
                   className="flex-1 p-2 text-sm bg-transparent border border-[var(--border)] rounded-lg focus:border-[var(--peach-ink)] focus:outline-none"
                 />
                 <button

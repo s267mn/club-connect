@@ -3,8 +3,10 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { FilePlus, Upload, Clock } from 'lucide-react';
+import { enforceWordLimit, TEXT_LIMITS } from '@/lib/textLimits';
 
 type Skill = { id: string; name: string };
+
 
 export default function SubmitContribution({ clubId, userId }: { clubId: string; userId: string }) {
   const [skills, setSkills] = useState<Skill[]>([]);
@@ -88,15 +90,33 @@ export default function SubmitContribution({ clubId, userId }: { clubId: string;
         {skills.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
       </select>
 
-      <input type="text" placeholder="Title (e.g. Edited recruitment video)" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full p-3 mb-3 bg-transparent border border-[var(--border)] rounded-xl text-sm focus:border-[var(--peach-ink)] focus:outline-none" required />
+      <input
+        type="text"
+        placeholder="Title (e.g. Edited recruitment video)"
+        value={title}
+        onChange={(e) => setTitle(enforceWordLimit(e.target.value.slice(0, TEXT_LIMITS.contributionTitle)))}
+        maxLength={TEXT_LIMITS.contributionTitle}
+        className="w-full p-3 bg-transparent border border-[var(--border)] rounded-xl text-sm focus:border-[var(--peach-ink)] focus:outline-none"
+        required
+      />
+      <p className="text-xs text-[var(--ink-dim)] text-right mb-3">{title.length}/{TEXT_LIMITS.contributionTitle}</p>
 
-      <textarea placeholder="Describe what you did" value={description} onChange={(e) => setDescription(e.target.value)} className="w-full p-3 mb-3 bg-transparent border border-[var(--border)] rounded-xl text-sm focus:border-[var(--peach-ink)] focus:outline-none" rows={3} />
+      <textarea
+        placeholder="Describe what you did"
+        value={description}
+        onChange={(e) => setDescription(enforceWordLimit(e.target.value.slice(0, TEXT_LIMITS.contributionDescription)))}
+        maxLength={TEXT_LIMITS.contributionDescription}
+        className="w-full p-3 bg-transparent border border-[var(--border)] rounded-xl text-sm focus:border-[var(--peach-ink)] focus:outline-none"
+        rows={3}
+      />
+      <p className="text-xs text-[var(--ink-dim)] text-right mb-3">{description.length}/{TEXT_LIMITS.contributionDescription}</p>
 
-      <label className="flex items-center gap-2 text-sm text-[var(--ink-dim)] mb-4 cursor-pointer border border-dashed border-[var(--border)] rounded-xl p-3 hover:border-[var(--peach-ink)] transition-colors">
+      <label className="flex items-center gap-2 text-sm text-[var(--ink-dim)] mb-1 cursor-pointer border border-dashed border-[var(--border)] rounded-xl p-3 hover:border-[var(--peach-ink)] transition-colors">
         <Upload size={16} />
         {file ? file.name : 'Attach a photo of your work (recommended)'}
         <input type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="hidden" />
       </label>
+      <p className="text-xs text-[var(--ink-dim)] mb-4">Max file size: 5MB</p>
 
       {error && <p className="text-red-600 text-sm mb-3">{error}</p>}
 

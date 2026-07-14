@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import SubmitContribution from './SubmitContribution';
 import VerifyContributions from './VerifyContributions';
 import { UserPlus, Clock, Check, X } from 'lucide-react';
+import { enforceWordLimit, TEXT_LIMITS } from '@/lib/textLimits';
 
 type Member = { user_id: string; role: string; users: { name: string; email: string; avatar_url: string | null } | null };
 type JoinRequest = { id: string; user_id: string; role_requested: string; message: string | null; users: { name: string; email: string } | null };
@@ -142,7 +143,15 @@ export default function ClubMembers({ clubId }: { clubId: string }) {
       {myStatus === 'none' && userId && showJoinForm && (
         <div className="card p-6 max-w-md mb-6 fade-up">
           <h3 className="font-display text-lg mb-3">Request to Join</h3>
-          <textarea placeholder="Why do you want to join? (optional)" value={joinMessage} onChange={(e) => setJoinMessage(e.target.value)} className="w-full p-3 mb-3 bg-transparent border border-[var(--border)] rounded-xl text-sm focus:border-[var(--peach-ink)] focus:outline-none" rows={3} />
+          <textarea
+            placeholder="Why do you want to join? (optional)"
+            value={joinMessage}
+            onChange={(e) => setJoinMessage(enforceWordLimit(e.target.value.slice(0, TEXT_LIMITS.joinMessage)))}
+            maxLength={TEXT_LIMITS.joinMessage}
+            className="w-full p-3 bg-transparent border border-[var(--border)] rounded-xl text-sm focus:border-[var(--peach-ink)] focus:outline-none"
+            rows={3}
+          />
+          <p className="text-xs text-[var(--ink-dim)] text-right mb-3">{joinMessage.length}/{TEXT_LIMITS.joinMessage}</p>
           <div className="flex gap-2">
             <button onClick={handleSubmitJoinRequest} disabled={submitting} className="btn-primary px-4 py-2 text-sm disabled:opacity-50">{submitting ? 'Submitting...' : 'Submit Request'}</button>
             <button onClick={() => setShowJoinForm(false)} className="btn-ghost px-4 py-2 text-sm">Cancel</button>

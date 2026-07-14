@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import { PlusCircle, Clock } from 'lucide-react';
+import { enforceWordLimit, TEXT_LIMITS } from '@/lib/textLimits';
 
 const CATEGORIES = [
   'Technical', 'Cultural', 'Arts & Design', 'Sports & Fitness',
@@ -84,8 +85,26 @@ export default function NewClubRequestPage() {
         </div>
         <p className="text-sm text-[var(--ink-dim)] mb-6">Your request will be reviewed before it goes live.</p>
 
-        <input type="text" placeholder="Club name" value={name} onChange={(e) => setName(e.target.value)} className="w-full p-3 mb-3 bg-transparent border border-[var(--border)] rounded-xl text-sm focus:border-[var(--peach-ink)] focus:outline-none" required />
-        <textarea placeholder="Description" value={description} onChange={(e) => setDescription(e.target.value)} className="w-full p-3 mb-3 bg-transparent border border-[var(--border)] rounded-xl text-sm focus:border-[var(--peach-ink)] focus:outline-none" rows={3} />
+        <input
+          type="text"
+          placeholder="Club name"
+          value={name}
+          onChange={(e) => setName(enforceWordLimit(e.target.value.slice(0, TEXT_LIMITS.clubName)))}
+          maxLength={TEXT_LIMITS.clubName}
+          className="w-full p-3 bg-transparent border border-[var(--border)] rounded-xl text-sm focus:border-[var(--peach-ink)] focus:outline-none"
+          required
+        />
+        <p className="text-xs text-[var(--ink-dim)] text-right mb-3">{name.length}/{TEXT_LIMITS.clubName}</p>
+
+        <textarea
+          placeholder="Description"
+          value={description}
+          onChange={(e) => setDescription(enforceWordLimit(e.target.value.slice(0, TEXT_LIMITS.clubDescription)))}
+          maxLength={TEXT_LIMITS.clubDescription}
+          className="w-full p-3 bg-transparent border border-[var(--border)] rounded-xl text-sm focus:border-[var(--peach-ink)] focus:outline-none"
+          rows={3}
+        />
+        <p className="text-xs text-[var(--ink-dim)] text-right mb-4">{description.length}/{TEXT_LIMITS.clubDescription}</p>
 
         <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full p-3 mb-4 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-sm focus:border-[var(--peach-ink)] focus:outline-none" required>
           <option value="">Select a category</option>
