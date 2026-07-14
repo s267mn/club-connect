@@ -56,7 +56,9 @@ export default function SubmitContribution({ clubId, userId }: { clubId: string;
       const { error: notifError } = await supabase.from('notifications').insert({
         user_id: clubRow.created_by,
         message: `New contribution submitted: "${title}"`,
-        link: `/clubs/${clubId}`,
+        activity_type: 'new_contribution',
+        club_id: clubId,
+        actor_id: userId,
       });
       if (notifError) console.error('Failed to notify club admin:', notifError);
     }

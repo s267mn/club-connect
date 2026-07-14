@@ -69,6 +69,19 @@ export default function ClubMembers({ clubId }: { clubId: string }) {
     setShowJoinForm(false);
     setJoinMessage('');
     loadEverything();
+
+    // Notify club admins of a new join request
+    const { data: admins } = await supabase.from('club_members').select('user_id').eq('club_id', clubId).eq('role', 'admin');
+    for (const admin of admins ?? []) {
+      const { error: notifError } = await supabase.from('notifications').insert({
+        user_id: admin.user_id,
+        message: `New join request for your club`,
+        activity_type: 'new_join_request',
+        club_id: clubId,
+        actor_id: userId,
+      });
+      if (notifError) console.error('Failed to notify admin of join request:', notifError);
+    }
   };
 
   const handleApprove = async (request: JoinRequest) => {
@@ -84,7 +97,8 @@ export default function ClubMembers({ clubId }: { clubId: string }) {
       const { error: notifError } = await supabase.from('notifications').insert({
         user_id: request.user_id,
         message: `You've been approved as a member!`,
-        link: `/clubs/${clubId}`,
+        activity_type: 'join_approved',
+        club_id: clubId,
       });
       if (notifError) console.error('Notification insert failed (approve):', notifError);
     } else {
@@ -104,7 +118,8 @@ export default function ClubMembers({ clubId }: { clubId: string }) {
     const { error: notifError } = await supabase.from('notifications').insert({
       user_id: request.user_id,
       message: `Your request to join was not approved this time.`,
-      link: `/clubs/${clubId}`,
+      activity_type: 'join_rejected',
+      club_id: clubId,
     });
     if (notifError) console.error('Notification insert failed (reject):', notifError);
 

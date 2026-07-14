@@ -51,7 +51,9 @@ export default function NewClubRequestPage() {
       const { error: notifError } = await supabase.from('notifications').insert({
         user_id: superAdminRow.id,
         message: `New club request: "${name}"`,
-        link: `/dashboard`,
+        activity_type: 'new_club_request',
+        club_id: clubData?.id,
+        actor_id: userId,
       });
       if (notifError) console.error('Failed to notify super admin:', notifError);
     }

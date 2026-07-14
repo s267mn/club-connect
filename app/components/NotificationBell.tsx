@@ -11,6 +11,10 @@ type Notification = {
   link: string | null;
   read: boolean | null;
   created_at: string | null;
+  activity_type: string | null;
+  club_id: string | null;
+  contribution_id: string | null;
+  comment_id: string | null;
 };
 
 export default function NotificationBell() {
@@ -31,7 +35,7 @@ export default function NotificationBell() {
 
     const { data, error } = await supabase
       .from('notifications')
-      .select('id, message, link, read, created_at')
+      .select('id, message, link, read, created_at, activity_type, club_id, contribution_id, comment_id')
       .eq('user_id', uid)
       .order('created_at', { ascending: false })
       .limit(20);
@@ -79,6 +83,83 @@ export default function NotificationBell() {
     }
   };
 
+  const clearAll = async () => {
+    if (notifications.length === 0) return;
+
+    const { data: sessionData } = await supabase.auth.getSession();
+    const uid = sessionData.session?.user.id;
+    if (!uid) return;
+
+    const previous = notifications;
+    setNotifications([]);
+
+    const { error } = await supabase.from('notifications').delete().eq('user_id', uid);
+    if (error) {
+      console.error('Failed to clear notifications:', error);
+      setNotifications(previous);
+    }
+  };
+
+  // Single source of truth for where each notification type navigates.
+  // Every case uses structured columns — no string/hash parsing anywhere.
+  const resolveDestination = (n: Notification): string | null => {
+    switch (n.activity_type) {
+      case 'like':
+        // Go to the club page, scroll to + pulse the contribution card only.
+        if (!n.club_id || !n.contribution_id) return n.link;
+        return `/clubs/${n.club_id}?contribution=${n.contribution_id}`;
+
+      case 'comment':
+        // Go to club page, scroll to contribution, auto-expand comments, pulse the specific comment.
+        if (!n.club_id || !n.contribution_id) return n.link;
+        return n.comment_id
+          ? `/clubs/${n.club_id}?contribution=${n.contribution_id}&comment=${n.comment_id}`
+          : `/clubs/${n.club_id}?contribution=${n.contribution_id}`;
+
+      case 'reply':
+        // Same as comment — the reply is itself a comment row, thread auto-expands to reveal it.
+        if (!n.club_id || !n.contribution_id) return n.link;
+        return n.comment_id
+          ? `/clubs/${n.club_id}?contribution=${n.contribution_id}&comment=${n.comment_id}`
+          : `/clubs/${n.club_id}?contribution=${n.contribution_id}`;
+
+      case 'mention':
+        // Same behavior as comment/reply — whichever the mention actually landed in.
+        if (!n.club_id || !n.contribution_id) return n.link;
+        return n.comment_id
+          ? `/clubs/${n.club_id}?contribution=${n.contribution_id}&comment=${n.comment_id}`
+          : `/clubs/${n.club_id}?contribution=${n.contribution_id}`;
+
+      case 'new_contribution':
+      case 'new_join_request':
+        if (!n.club_id) return n.link;
+        return `/clubs/${n.club_id}`;
+
+      case 'join_approved':
+      case 'join_rejected':
+        if (!n.club_id) return n.link;
+        return `/clubs/${n.club_id}`;
+
+      case 'club_request_approved':
+        if (!n.club_id) return n.link;
+        return `/clubs/${n.club_id}`;
+
+      case 'club_request_rejected':
+        return '/clubsrequest';
+
+      case 'new_club_request':
+        return '/dashboard';
+
+      case 'contribution_verified':
+      case 'contribution_rejected':
+        return '/profile';
+
+      default:
+        // Fallback to the legacy link column for anything not yet migrated.
+        return n.link;
+    }
+  };
+
   const handleNotificationClick = async (n: Notification) => {
     setOpen(false);
 
@@ -88,14 +169,12 @@ export default function NotificationBell() {
       if (error) console.error('Failed to mark notification as read:', error);
     }
 
-    if (n.link) router.push(n.link);
+    const destination = resolveDestination(n);
+    if (destination) router.push(destination);
   };
 
   const timeAgo = (dateStr: string | null) => {
     if (!dateStr) return '';
-    // Supabase timestamps without an explicit timezone are stored as UTC.
-    // Force-parse as UTC by appending 'Z' if there's no zone marker already,
-    // otherwise the browser assumes local time and skews the diff by your UTC offset.
     const hasZone = /Z|[+-]\d{2}:?\d{2}$/.test(dateStr);
     const normalized = hasZone ? dateStr : `${dateStr}Z`;
     const diffMs = Date.now() - new Date(normalized).getTime();
@@ -127,11 +206,18 @@ export default function NotificationBell() {
         <div className="absolute right-0 mt-2 w-80 max-h-96 overflow-y-auto card bg-[var(--bg)] border border-[var(--border)] rounded-xl shadow-xl">
           <div className="flex justify-between items-center px-4 py-3 border-b border-[var(--border)]">
             <h3 className="text-sm font-semibold">Notifications</h3>
-            {unreadCount > 0 && (
-              <button onClick={markAllRead} className="text-xs text-[var(--cyan)] hover:underline">
-                Mark all read
-              </button>
-            )}
+            <div className="flex items-center gap-3">
+              {unreadCount > 0 && (
+                <button onClick={markAllRead} className="text-xs text-[var(--cyan)] hover:underline">
+                  Mark all read
+                </button>
+              )}
+              {notifications.length > 0 && (
+                <button onClick={clearAll} className="text-xs text-[var(--ink-dim)] hover:text-red-600 hover:underline">
+                  Clear all
+                </button>
+              )}
+            </div>
           </div>
 
           {loading ? (

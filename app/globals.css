@@ -214,3 +214,14 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .icon-flip, .icon-spin { animation: none !important; }
 }
+
+@keyframes pulse-highlight {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(217, 118, 74, 0); }
+  25% { box-shadow: 0 0 0 4px rgba(217, 118, 74, 0.4); }
+  50% { box-shadow: 0 0 0 0 rgba(217, 118, 74, 0); }
+  75% { box-shadow: 0 0 0 4px rgba(217, 118, 74, 0.4); }
+}
+
+.pulse-highlight {
+  animation: pulse-highlight 1s ease-in-out;
+}

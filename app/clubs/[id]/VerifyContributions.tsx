@@ -51,7 +51,7 @@ export default function VerifyContributions({ clubId }: { clubId: string }) {
       const { error: notifError } = await supabase.from('notifications').insert({
         user_id: contrib.user_id,
         message: `Your contribution "${contrib.title}" was verified with a score of ${score}!`,
-        link: `/profile`,
+        activity_type: 'contribution_verified',
       });
       if (notifError) console.error('Failed to notify student (verify):', notifError);
     }
@@ -71,7 +71,7 @@ export default function VerifyContributions({ clubId }: { clubId: string }) {
       const { error: notifError } = await supabase.from('notifications').insert({
         user_id: contrib.user_id,
         message: `Your contribution "${contrib.title}" was not verified.`,
-        link: `/profile`,
+        activity_type: 'contribution_rejected',
       });
       if (notifError) console.error('Failed to notify student (reject):', notifError);
     }

@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { ScrollText, Paperclip } from 'lucide-react';
+import LikeCommentSection from '@/components/LikeCommentSection';
 
 type Contribution = {
   id: string;
@@ -21,10 +22,12 @@ type Skill = { id: string; name: string };
 
 export default function ClubContributionFeed({ clubId }: { clubId: string }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [contributions, setContributions] = useState<Contribution[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
   const [selectedSkillId, setSelectedSkillId] = useState('');
   const [loading, setLoading] = useState(true);
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -51,6 +54,32 @@ export default function ClubContributionFeed({ clubId }: { clubId: string }) {
 
     load();
   }, [clubId]);
+
+  // Structured deep-link targeting: ?contribution=<id>&comment=<id>
+  // No hash parsing, no string splitting — just real query params.
+  useEffect(() => {
+    if (loading || contributions.length === 0) return;
+
+    const targetContributionId = searchParams.get('contribution');
+    if (!targetContributionId) return;
+
+    const el = document.getElementById(`contribution-${targetContributionId}`);
+    if (!el) return;
+
+    const targetCommentId = searchParams.get('comment');
+
+    setTimeout(() => {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setHighlightedId(targetContributionId);
+      setTimeout(() => setHighlightedId(null), 2000);
+
+      if (targetCommentId) {
+        window.dispatchEvent(new CustomEvent('focus-comment', {
+          detail: { contributionId: targetContributionId, commentId: targetCommentId },
+        }));
+      }
+    }, 200);
+  }, [loading, contributions, searchParams]);
 
   const filtered = selectedSkillId
     ? contributions.filter((c) => c.skill_id === selectedSkillId)
@@ -87,7 +116,11 @@ export default function ClubContributionFeed({ clubId }: { clubId: string }) {
             const isImage = /\.(jpe?g|png|gif|webp|avif)$/i.test(c.file_url ?? '');
 
             return (
-              <div key={c.id} className="card p-5">
+              <div
+                key={c.id}
+                id={`contribution-${c.id}`}
+                className={`card p-5 transition-shadow ${highlightedId === c.id ? 'pulse-highlight' : ''}`}
+              >
                 <div className="flex items-start justify-between gap-4 mb-3">
                   <div className="flex items-center gap-3">
                     <span className="avatar w-11 h-11 text-sm overflow-hidden shrink-0">
@@ -133,6 +166,13 @@ export default function ClubContributionFeed({ clubId }: { clubId: string }) {
                     <Paperclip size={11} /> View submitted file
                   </a>
                 )}
+
+                <LikeCommentSection
+                  contributionId={c.id}
+                  contributionOwnerId={c.user_id}
+                  contributionTitle={c.title}
+                  clubId={clubId}
+                />
               </div>
             );
           })}

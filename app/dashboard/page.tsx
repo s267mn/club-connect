@@ -40,7 +40,8 @@ export default function DashboardPage() {
     const { error: notifError } = await supabase.from('notifications').insert({
       user_id: club.created_by,
       message: `Your club request "${club.name}" was approved!`,
-      link: `/clubs/${club.id}`,
+      activity_type: 'club_request_approved',
+      club_id: club.id,
     });
     if (notifError) console.error('Failed to notify club requester (approve):', notifError);
 
@@ -53,7 +54,7 @@ export default function DashboardPage() {
     const { error: notifError } = await supabase.from('notifications').insert({
       user_id: club.created_by,
       message: `Your club request "${club.name}" was not approved.`,
-      link: `/clubsrequest`,
+      activity_type: 'club_request_rejected',
     });
     if (notifError) console.error('Failed to notify club requester (reject):', notifError);
 
