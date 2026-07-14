@@ -6,11 +6,16 @@ import { useRouter } from 'next/navigation';
 import ProfileView from '@/components/ProfileView';
 import Leaderboard from '@/components/Leaderboard';
 
+
 export default function ProfilePage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [checking, setChecking] = useState(true);
   const router = useRouter();
 
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+  
   useEffect(() => {
     const init = async () => {
       const { data: sessionData } = await supabase.auth.getSession();

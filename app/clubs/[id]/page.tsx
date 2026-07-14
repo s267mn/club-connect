@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { calculateOverallRating } from '@/lib/ratingFormula';
 import ClubMembers from './ClubMembers';
@@ -14,6 +14,7 @@ type Club = { id: string; name: string; description: string; category: string | 
 export default function ClubDetailPage() {
   const params = useParams();
   const id = params.id as string;
+  const router = useRouter();
 
   const [club, setClub] = useState<Club | null>(null);
   const [notFound, setNotFound] = useState(false);
@@ -21,7 +22,11 @@ export default function ClubDetailPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [memberCount, setMemberCount] = useState(0);
   const [verifiedCount, setVerifiedCount] = useState(0);
-  const [topContributor, setTopContributor] = useState<string | null>(null);
+  const [topContributor, setTopContributor] = useState<{
+    id: string;
+    name: string;
+    avatar_url: string | null;
+  } | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -52,7 +57,7 @@ export default function ClubDetailPage() {
 
       const { data: contribs } = await supabase
         .from('contributions')
-        .select('user_id, score, users!contributions_user_id_fkey(name)')
+        .select('user_id, score, users!contributions_user_id_fkey(name, avatar_url)')
         .eq('club_id', id)
         .eq('status', 'verified');
 
@@ -60,14 +65,20 @@ export default function ClubDetailPage() {
       setVerifiedCount(contribList.length);
 
       if (contribList.length > 0) {
-        const perUser: { [uid: string]: { total: number; count: number; name: string } } = {};
+        const perUser: { [uid: string]: { total: number; count: number; name: string; avatar_url: string | null; id: string } } = {};
         contribList.forEach((c) => {
-          if (!perUser[c.user_id]) perUser[c.user_id] = { total: 0, count: 0, name: c.users?.name ?? 'Unknown' };
+          if (!perUser[c.user_id]) perUser[c.user_id] = {
+            total: 0,
+            count: 0,
+            name: c.users?.name ?? 'Unknown',
+            avatar_url: c.users?.avatar_url ?? null,
+            id: c.user_id,
+          };
           perUser[c.user_id].total += c.score;
           perUser[c.user_id].count += 1;
         });
 
-        let bestName = '';
+        let bestContributor: { id: string; name: string; avatar_url: string | null } | null = null;
         let bestRating = -1;
         Object.values(perUser).forEach((agg) => {
           const rating = calculateOverallRating({
@@ -76,9 +87,9 @@ export default function ClubDetailPage() {
             distinctSkills: 1,
             clubsJoined: 1,
           });
-          if (rating > bestRating) { bestRating = rating; bestName = agg.name; }
+          if (rating > bestRating) { bestRating = rating; bestContributor = { id: agg.id, name: agg.name, avatar_url: agg.avatar_url }; }
         });
-        setTopContributor(bestName);
+        setTopContributor(bestContributor);
       }
 
       setLoading(false);
@@ -146,9 +157,33 @@ export default function ClubDetailPage() {
           </div>
           <div className="card-tint bg-[var(--peach)] p-4 flex items-center gap-3">
             <Star className="text-[var(--peach-ink)]" size={18} />
-            <div>
-              <p className="text-xs text-[var(--ink-dim)]">Top Contributor</p>
-              <p className="font-display text-sm text-[var(--peach-ink)] truncate">{topContributor ?? '—'}</p>
+            <div className="flex-1">
+              <p className="text-xs text-[var(--ink-dim)] mb-2">Top Contributor</p>
+              {topContributor ? (
+                <button
+                  onClick={() => router.push(`/profile/${topContributor.id}`)}
+                  className="flex items-center gap-2 hover:opacity-80 transition"
+                >
+                  <div className="w-9 h-9 rounded-full overflow-hidden bg-[var(--border)] flex items-center justify-center">
+                    {topContributor.avatar_url ? (
+                      <img
+                        src={topContributor.avatar_url}
+                        alt={topContributor.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-xs font-semibold">
+                        {topContributor.name.split(' ').map(n => n[0]).slice(0,2).join('').toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                  <span className="font-display text-sm text-[var(--peach-ink)] truncate">
+                    {topContributor.name}
+                  </span>
+                </button>
+              ) : (
+                <p className="font-display text-sm text-[var(--peach-ink)]">—</p>
+              )}
             </div>
           </div>
         </div>

@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { ScrollText, Paperclip } from 'lucide-react';
 import LikeCommentSection from '@/components/LikeCommentSection';
+import { useImageViewer } from '@/context/ImageViewerContext';
 
 type Contribution = {
   id: string;
@@ -22,6 +23,7 @@ type Skill = { id: string; name: string };
 
 export default function ClubContributionFeed({ clubId }: { clubId: string }) {
   const router = useRouter();
+  const { openViewer } = useImageViewer();
   const searchParams = useSearchParams();
   const [contributions, setContributions] = useState<Contribution[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
@@ -123,13 +125,21 @@ export default function ClubContributionFeed({ clubId }: { clubId: string }) {
               >
                 <div className="flex items-start justify-between gap-4 mb-3">
                   <div className="flex items-center gap-3">
-                    <span className="avatar w-11 h-11 text-sm overflow-hidden shrink-0">
+                    <button
+                       onClick={() => router.push(`/profile/${c.user_id}`)}
+                        className="avatar w-11 h-11 text-sm overflow-hidden shrink-0 transition-transform hover:scale-105 cursor-pointer"
+                        title={`View ${c.users?.name}'s profile`}
+                    >
                       {c.users?.avatar_url ? (
-                        <img src={c.users.avatar_url} alt={c.users.name} className="w-full h-full object-cover" />
+                        <img
+                          src={c.users.avatar_url}
+                          alt={c.users?.name ?? "Profile"}
+                          className="w-full h-full object-cover"
+                         />
                       ) : (
-                        initials
-                      )}
-                    </span>
+                       initials
+                     )}
+                      </button>
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="font-medium text-sm">{c.title}</p>
@@ -156,9 +166,24 @@ export default function ClubContributionFeed({ clubId }: { clubId: string }) {
                 )}
 
                 {c.file_url && isImage && (
-                  <a href={c.file_url} target="_blank" rel="noopener noreferrer" className="block mb-2">
-                    <img src={c.file_url} alt={c.title} className="max-h-64 rounded-xl border border-[var(--border)] object-cover" />
-                  </a>
+                  <img
+                    src={c.file_url}
+                    alt={c.title}
+                    onClick={() => openViewer([c.file_url], 0)}
+                    className="
+                    max-h-64
+                    rounded-xl
+                    border
+                    border-[var(--border)]
+                    object-cover
+                    cursor-zoom-in
+                    transition-all
+                    duration-300
+                    hover:scale-[1.015]
+                    hover:brightness-105
+                    active:scale-[0.98]
+                    "
+                  />
                 )}
 
                 {c.file_url && !isImage && (

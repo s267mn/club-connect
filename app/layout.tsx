@@ -3,6 +3,11 @@ import { Sora, Public_Sans } from "next/font/google";
 import "./globals.css";
 import Sidebar from './components/Sidebar';
 import NotificationBell from './components/NotificationBell';
+import { ImageViewerProvider } from '@/context/ImageViewerContext';
+import ImageViewerPortal from '@/components/ui/ImageViewerPortal';
+import { LoadingProvider } from '@/context/LoadingContext';
+import LoadingScreen from '@/components/ui/LoadingScreen';
+import NavigationEvents from '@/components/NavigationEvents';
 
 const sora = Sora({
   variable: "--font-display",
@@ -28,19 +33,36 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${sora.variable} ${publicSans.variable} h-full antialiased`}>
       <body className="min-h-full bg-[var(--bg)] text-[var(--ink)]">
-        <div className="bg-ambient">
-          <div className="blob blob-1" />
-          <div className="blob blob-2" />
-          <div className="blob blob-3" />
-        </div>
+  <LoadingProvider>
 
-        <div className="fixed top-0 left-0 h-screen w-3 bg-[var(--peach-ink)] z-0 pointer-events-none" />
+  <NavigationEvents />
 
-        <NotificationBell />
-        <Sidebar />
+  <ImageViewerProvider>
 
-        <div className="lg:pl-64 min-h-screen">{children}</div>
-      </body>
+    <LoadingScreen />
+
+    <div className="bg-ambient">
+      <div className="blob blob-1" />
+      <div className="blob blob-2" />
+      <div className="blob blob-3" />
+    </div>
+
+    <div className="fixed top-0 left-0 h-screen w-3 bg-[var(--peach-ink)] z-0 pointer-events-none" />
+
+    <NotificationBell />
+
+    <Sidebar />
+
+    <div className="lg:pl-64 min-h-screen">
+      {children}
+    </div>
+
+    <ImageViewerPortal />
+
+  </ImageViewerProvider>
+
+</LoadingProvider>
+</body>
     </html>
   );
 }
