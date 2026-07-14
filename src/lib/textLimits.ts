@@ -10,7 +10,7 @@ const MAX_WORD_LENGTH = 20;
 // pointing at these constants (character limits differ per field), but the
 // actual numbers only ever live in this one place.
 export const TEXT_LIMITS = {
-  contributionTitle: 100,
+  contributionTitle: 30,
   contributionDescription: 1000,
   clubName: 60,
   clubDescription: 500,
