@@ -36,7 +36,7 @@ export default function RootLayout({
   <LoadingProvider>
 
   <NavigationEvents />
-
+  
   <ImageViewerProvider>
 
     <LoadingScreen />
