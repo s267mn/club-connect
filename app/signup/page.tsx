@@ -2,15 +2,15 @@
 
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { useRouter } from 'next/navigation';
-import { UserPlus } from 'lucide-react';
+import { UserPlus, MailCheck } from 'lucide-react';
 
 export default function SignupPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const router = useRouter();
+  const [submitting, setSubmitting] = useState(false);
+  const [sent, setSent] = useState(false);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,16 +21,38 @@ export default function SignupPage() {
       return;
     }
 
-    const { data, error: signupError } = await supabase.auth.signUp({ email, password });
+    setSubmitting(true);
+
+    // Store the name temporarily so the callback page can pick it up
+    // and create the users row once the email is actually confirmed.
+    const { error: signupError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { pending_name: name },
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+
+    setSubmitting(false);
+
     if (signupError) { setError(signupError.message); return; }
-
-    if (data.user) {
-      const { error: insertError } = await supabase.from('users').insert({ id: data.user.id, name, email });
-      if (insertError) { setError(insertError.message); return; }
-    }
-
-    router.push('/clubs');
+    setSent(true);
   };
+
+  if (sent) {
+    return (
+      <main className="min-h-screen flex items-center justify-center p-6">
+        <div className="card p-8 w-full max-w-sm fade-up text-center">
+          <MailCheck className="text-[var(--peach-ink)] mx-auto mb-3" size={28} />
+          <h1 className="font-display text-xl mb-2">Check your inbox</h1>
+          <p className="text-sm text-[var(--ink-dim)]">
+            We sent a confirmation link to <span className="font-medium text-[var(--ink)]">{email}</span>. Click it to verify your NITK email and finish creating your account.
+          </p>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen flex items-center justify-center p-6">
@@ -47,7 +69,9 @@ export default function SignupPage() {
 
         {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
 
-        <button type="submit" className="btn-primary w-full py-3 text-sm">Create Account</button>
+        <button type="submit" disabled={submitting} className="btn-primary w-full py-3 text-sm disabled:opacity-50">
+          {submitting ? 'Sending link...' : 'Create Account'}
+        </button>
       </form>
     </main>
   );

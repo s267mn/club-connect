@@ -144,7 +144,7 @@ export default function ProfileView({ userId, isOwnProfile }: { userId: string; 
               <CheckCircle2 size={13} /> Verified
             </span>
           </div>
-          {isOwnProfile && <p className="text-sm text-[var(--ink-dim)] mt-1">{email}</p>}
+          <p className="text-sm text-[var(--ink-dim)] mt-1">{email}</p>
           {isOwnProfile && (
             <div className="mt-2">
               <AvatarUpload userId={userId} currentAvatarUrl={avatarUrl} onUploaded={(url) => setAvatarUrl(url)} />

@@ -30,6 +30,7 @@ export default function LikeCommentSection({
   const [userId, setUserId] = useState<string | null>(null);
   const [likeCount, setLikeCount] = useState(0);
   const [liked, setLiked] = useState(false);
+  const [likeInFlight, setLikeInFlight] = useState(false);
   const [animating, setAnimating] = useState(false);
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentCount, setCommentCount] = useState(0);
@@ -190,7 +191,8 @@ export default function LikeCommentSection({
   };
 
   const handleLikeToggle = async () => {
-    if (!userId) return;
+    if (!userId || likeInFlight) return;
+    setLikeInFlight(true);
 
     setAnimating(true);
     setTimeout(() => setAnimating(false), 400);
@@ -213,17 +215,36 @@ export default function LikeCommentSection({
       if (error) {
         console.error('Failed to like:', error);
       } else if (userId !== contributionOwnerId) {
-        const { error: notifError } = await supabase.from('notifications').insert({
-          user_id: contributionOwnerId,
-          message: `Someone liked your contribution "${contributionTitle}"`,
-          activity_type: 'like',
-          club_id: clubId,
-          contribution_id: contributionId,
-          actor_id: userId,
-        });
-        if (notifError) console.error('Failed to notify like:', notifError);
+        // Cooldown: skip notifying if this same user already triggered a
+        // like notification for this contribution within the last 60s —
+        // prevents spam from rapid like/unlike/like toggling.
+        const sixtySecondsAgo = new Date(Date.now() - 60 * 1000).toISOString();
+        const { data: recentNotif } = await supabase
+          .from('notifications')
+          .select('id')
+          .eq('activity_type', 'like')
+          .eq('actor_id', userId)
+          .eq('contribution_id', contributionId)
+          .gte('created_at', sixtySecondsAgo)
+          .maybeSingle();
+
+        if (!recentNotif) {
+          const { error: notifError } = await supabase.from('notifications').insert({
+            user_id: contributionOwnerId,
+            message: `Someone liked your contribution "${contributionTitle}"`,
+            activity_type: 'like',
+            club_id: clubId,
+            contribution_id: contributionId,
+            actor_id: userId,
+          });
+          if (notifError) console.error('Failed to notify like:', notifError);
+        }
       }
     }
+
+    // Small cooldown after the request completes, so rapid double-taps
+    // can't queue up multiple overlapping like/unlike operations.
+    setTimeout(() => setLikeInFlight(false), 400);
   };
 
   const handleCommentSubmit = async () => {
@@ -363,7 +384,7 @@ export default function LikeCommentSection({
       <div className="flex items-center gap-4">
         <button
           onClick={handleLikeToggle}
-          disabled={!userId}
+          disabled={!userId || likeInFlight}
           className="flex items-center gap-1.5 text-sm text-[var(--ink-dim)] hover:text-[var(--peach-ink)] transition-colors disabled:opacity-50"
         >
           <Heart
