@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { Loader2 } from 'lucide-react';
 
-export default function AuthCallbackPage() {
+function AuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState('');
@@ -30,15 +30,24 @@ export default function AuthCallbackPage() {
 
       // This was a signup confirmation — create the users row now that
       // we know the email is genuinely confirmed.
-      const { data: existing } = await supabase.from('users').select('id').eq('id', user.id).maybeSingle();
+      const { data: existing } = await supabase
+        .from('users')
+        .select('id')
+        .eq('id', user.id)
+        .maybeSingle();
 
       if (!existing) {
-        const pendingName = (user.user_metadata as any)?.pending_name ?? user.email?.split('@')[0] ?? 'Student';
+        const pendingName =
+          (user.user_metadata as any)?.pending_name ??
+          user.email?.split('@')[0] ??
+          'Student';
+
         const { error: insertError } = await supabase.from('users').insert({
           id: user.id,
           name: pendingName,
           email: user.email,
         });
+
         if (insertError) {
           setError(insertError.message);
           return;
@@ -58,11 +67,34 @@ export default function AuthCallbackPage() {
           <p className="text-red-600 text-sm">{error}</p>
         ) : (
           <>
-            <Loader2 className="icon-spin text-[var(--peach-ink)] mx-auto mb-3" size={28} />
+            <Loader2
+              className="icon-spin text-[var(--peach-ink)] mx-auto mb-3"
+              size={28}
+            />
             <p className="text-sm text-[var(--ink-dim)]">Verifying...</p>
           </>
         )}
       </div>
     </main>
+  );
+}
+
+export default function AuthCallbackPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen flex items-center justify-center p-6">
+          <div className="text-center">
+            <Loader2
+              className="icon-spin text-[var(--peach-ink)] mx-auto mb-3"
+              size={28}
+            />
+            <p className="text-sm text-[var(--ink-dim)]">Verifying...</p>
+          </div>
+        </main>
+      }
+    >
+      <AuthCallbackContent />
+    </Suspense>
   );
 }
