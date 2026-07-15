@@ -23,6 +23,15 @@ export default function SignupPage() {
 
     setSubmitting(true);
 
+    // Check our own users table first — it only contains confirmed accounts,
+    // so this reliably tells us if this email is already taken.
+    const { data: existingUser } = await supabase.from('users').select('id').eq('email', email).maybeSingle();
+    if (existingUser) {
+      setError('An account with this email already exists. Try logging in instead.');
+      setSubmitting(false);
+      return;
+    }
+
     // Store the name temporarily so the callback page can pick it up
     // and create the users row once the email is actually confirmed.
     const { error: signupError } = await supabase.auth.signUp({
@@ -72,6 +81,11 @@ export default function SignupPage() {
         <button type="submit" disabled={submitting} className="btn-primary w-full py-3 text-sm disabled:opacity-50">
           {submitting ? 'Sending link...' : 'Create Account'}
         </button>
+
+        <p className="text-sm text-[var(--ink-dim)] text-center mt-4">
+          Already have an account?{' '}
+          <a href="/login" className="text-[var(--peach-ink)] hover:underline font-medium">Log in</a>
+        </p>
       </form>
     </main>
   );

@@ -8,6 +8,7 @@ import ImageViewerPortal from '@/components/ui/ImageViewerPortal';
 import { LoadingProvider } from '@/context/LoadingContext';
 import LoadingScreen from '@/components/ui/LoadingScreen';
 import NavigationEvents from '@/components/NavigationEvents';
+import Footer from './components/Footer';
 
 const sora = Sora({
   variable: "--font-display",
@@ -33,36 +34,30 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${sora.variable} ${publicSans.variable} h-full antialiased`}>
       <body className="min-h-full bg-[var(--bg)] text-[var(--ink)]">
-  <LoadingProvider>
+        <LoadingProvider>
+          <NavigationEvents />
+          <ImageViewerProvider>
+            <LoadingScreen />
+            <div className="bg-ambient">
+              <div className="blob blob-1" />
+              <div className="blob blob-2" />
+              <div className="blob blob-3" />
+            </div>
 
-  <NavigationEvents />
-  
-  <ImageViewerProvider>
+            <div className="fixed top-0 left-0 h-screen w-3 bg-[var(--peach-ink)] z-0 pointer-events-none" />
 
-    <LoadingScreen />
+            <NotificationBell />
+            <Sidebar />
 
-    <div className="bg-ambient">
-      <div className="blob blob-1" />
-      <div className="blob blob-2" />
-      <div className="blob blob-3" />
-    </div>
+            <div className="lg:pl-64 min-h-screen flex flex-col">
+              <div className="flex-1">{children}</div>
+              <Footer />
+            </div>
 
-    <div className="fixed top-0 left-0 h-screen w-3 bg-[var(--peach-ink)] z-0 pointer-events-none" />
-
-    <NotificationBell />
-
-    <Sidebar />
-
-    <div className="lg:pl-64 min-h-screen">
-      {children}
-    </div>
-
-    <ImageViewerPortal />
-
-  </ImageViewerProvider>
-
-</LoadingProvider>
-</body>
+            <ImageViewerPortal />
+          </ImageViewerProvider>
+        </LoadingProvider>
+      </body>
     </html>
   );
 }
