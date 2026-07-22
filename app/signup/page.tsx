@@ -45,7 +45,22 @@ export default function SignupPage() {
 
     setSubmitting(false);
 
-    if (signupError) { setError(signupError.message); return; }
+    if (signupError) {
+      const msg = signupError.message.toLowerCase();
+
+      if (msg.includes('rate limit')) {
+        setError("You've requested this too many times recently. Please wait a few minutes before trying again.");
+      } else if (msg.includes('already registered') || msg.includes('already exists') || msg.includes('user already')) {
+        // This covers the case where the account exists but was never confirmed —
+        // our users-table check above only catches confirmed accounts, so this
+        // is the fallback for that unconfirmed-duplicate case.
+        setError('A signup for this email is already pending. Check your inbox for the confirmation link, or wait a moment and try again to get a fresh one.');
+      } else {
+        setError(signupError.message);
+      }
+      return;
+    }
+
     setSent(true);
   };
 
