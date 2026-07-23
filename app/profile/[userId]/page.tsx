@@ -15,10 +15,6 @@ export default function PublicProfilePage() {
   const [ownUserId, setOwnUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    window.scrollTo(0, 0);
-  }, []);
-  
-  useEffect(() => {
     const init = async () => {
       const { data: sessionData } = await supabase.auth.getSession();
       const authUid = sessionData.session?.user.id;
