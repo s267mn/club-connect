@@ -1,23 +1,33 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
-import { FileCheck, TrendingUp, CheckCircle2, Paperclip } from 'lucide-react';
-import { calculateOverallRating } from '@/lib/ratingFormula';
-import RatingHistoryChart from '@/components/RatingHistoryChart';
-import AvatarUpload from '@/components/AvatarUpload';
+import {
+  CheckCircle2,
+  FileCheck,
+  TrendingUp,
+  Paperclip
+} from 'lucide-react';
+import AvatarUpload from './AvatarUpload';
+import RatingHistoryChart from './RatingHistoryChart';
 
-type Contribution = {
+interface Contribution {
   id: string;
   title: string;
-  description: string;
-  file_url: string;
   score: number;
-  skills: { name: string } | null;
-  clubs: { name: string } | null;
-};
+  file_url?: string;
+  clubs?: { name: string };
+  skills?: { name: string };
+}
 
-type SkillRating = { skillName: string; averageScore: number; contributionCount: number };
+interface SkillRating {
+  skillName: string;
+  averageScore: number;
+}
+
+interface UserProfileProps {
+  userId: string;
+}
 
 function CountUp({ value }: { value: number }) {
   const [display, setDisplay] = useState(0);
@@ -52,102 +62,216 @@ function EmptyIllustration() {
   );
 }
 
-export default function ProfileView({ userId, isOwnProfile }: { userId: string; isOwnProfile: boolean }) {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [notFound, setNotFound] = useState(false);
-  const [contributions, setContributions] = useState<Contribution[]>([]);
-  const [skillRatings, setSkillRatings] = useState<SkillRating[]>([]);
-  const [clubsJoined, setClubsJoined] = useState(0);
+export default function UserProfileContainer({ userId }: UserProfileProps) {
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
   const [barsReady, setBarsReady] = useState(false);
 
+  const [authUserId, setAuthUserId] = useState<string | null>(null);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined);
+  const [totalVerified, setTotalVerified] = useState(0);
+  const [overallRating, setOverallRating] = useState(0);
+  const [skillRatings, setSkillRatings] = useState<SkillRating[]>([]);
+  const [contributions, setContributions] = useState<Contribution[]>([]);
+
+  const isOwnProfile = useMemo(() => {
+    return Boolean(authUserId && authUserId === userId);
+  }, [authUserId, userId]);
+
   useEffect(() => {
-    const load = async () => {
+    let isMounted = true;
+
+    async function load() {
+      setBarsReady(false);
       setLoading(true);
+      setNotFound(false);
 
-      const { data: userRow, error: userError } = await supabase.from('users').select('id, name, email, avatar_url').eq('id', userId).single();
-      if (userError || !userRow) { setNotFound(true); setLoading(false); return; }
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (isMounted) {
+          setAuthUserId(user?.id ?? null);
+        }
 
-      setName(userRow.name);
-      setEmail(userRow.email);
-      setAvatarUrl(userRow.avatar_url ?? null);
+        let { data: userRow, error: userError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', userId)
+          .single();
 
-      const { data: contribs } = await supabase
-        .from('contributions')
-        .select('id, title, description, file_url, score, skills(name), clubs(name)')
-        .eq('user_id', userRow.id)
-        .eq('status', 'verified')
-        .order('created_at', { ascending: false });
+        if (userError && userError.code !== 'PGRST116') {
+          throw userError;
+        }
 
-      const contribList = (contribs as any) ?? [];
-      setContributions(contribList);
+        if (!userRow && user?.id === userId) {
+          const { error: upsertError } = await supabase
+            .from('users')
+            .upsert({
+              id: user.id,
+              email: user.email!,
+              name:
+                user.user_metadata?.pending_name ??
+                user.email?.split('@')[0] ??
+                'Student',
+            });
 
-      const skillMap: { [skillName: string]: { total: number; count: number } } = {};
-      contribList.forEach((c: Contribution) => {
-        const skillName = c.skills?.name ?? 'Unknown Skill';
-        if (!skillMap[skillName]) skillMap[skillName] = { total: 0, count: 0 };
-        skillMap[skillName].total += c.score;
-        skillMap[skillName].count += 1;
-      });
+          if (upsertError) {
+            throw upsertError;
+          }
 
-      const ratings: SkillRating[] = Object.entries(skillMap)
-        .map(([skillName, { total, count }]) => ({ skillName, averageScore: Math.round(total / count), contributionCount: count }))
-        .sort((a, b) => b.averageScore - a.averageScore);
+          await new Promise((r) => setTimeout(r, 100));
 
-      setSkillRatings(ratings);
+          const { data: retryRow, error: retryError } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', userId)
+            .single();
 
-      const { count: clubCount } = await supabase
-        .from('club_members')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', userRow.id);
+          if (retryError) {
+            throw retryError;
+          }
+          userRow = retryRow;
+        }
 
-      setClubsJoined(clubCount ?? 0);
+        if (!userRow) {
+          if (isMounted) setNotFound(true);
+          return;
+        }
 
-      setLoading(false);
-      requestAnimationFrame(() => setTimeout(() => setBarsReady(true), 100));
-    };
+        if (isMounted) {
+          setName(userRow.name);
+          setEmail(userRow.email);
+          setAvatarUrl(userRow.avatar_url);
+        }
+
+        const [contribRes, statsRes] = await Promise.all([
+          supabase
+            .from('contributions')
+            .select(`
+              id,
+              title,
+              score,
+              file_url,
+              clubs ( name ),
+              skills ( name )
+            `)
+            .eq('user_id', userId)
+            .eq('status', 'verified')
+            .order('created_at', { ascending: false }),
+          supabase
+            .from('user_skill_stats')
+            .select('*')
+            .eq('user_id', userId)
+        ]);
+
+        if (contribRes.error) {
+          throw contribRes.error;
+        }
+
+        if (isMounted) {
+          const contribList = (contribRes.data ?? []) as Contribution[];
+          setContributions(contribList);
+          setTotalVerified(contribList.length);
+
+          if (statsRes.data && statsRes.data.length > 0) {
+            const ratings = statsRes.data.map((stat: any) => ({
+              skillName: stat.skill_name,
+              averageScore: stat.average_score,
+            }));
+            setSkillRatings(ratings);
+
+            const overall =
+              ratings.reduce((acc: number, curr: SkillRating) => acc + curr.averageScore, 0) /
+              ratings.length;
+            setOverallRating(Math.round(overall));
+          }
+        }
+      } catch (err) {
+        console.error('Error loading profile:', err);
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+          setTimeout(() => setBarsReady(true), 50);
+        }
+      }
+    }
 
     load();
+
+    return () => {
+      isMounted = false;
+    };
   }, [userId]);
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-sm text-[var(--ink-dim)]">Loading...</div>;
-  if (notFound) return <div className="min-h-screen flex items-center justify-center text-sm text-red-600">Student not found.</div>;
+  if (loading) {
+    return (
+      <div className="card p-8 text-center text-[var(--ink-dim)]">
+        Loading profile...
+      </div>
+    );
+  }
 
-  const initials = name.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase();
-  const totalVerified = contributions.length;
-  const avgScoreAcrossAll = totalVerified > 0 ? contributions.reduce((s, c) => s + c.score, 0) / totalVerified : 0;
+  if (notFound) {
+    return (
+      <div className="card p-8 text-center text-[var(--ink-dim)]">
+        Profile not found.
+      </div>
+    );
+  }
 
-  const overallRating = calculateOverallRating({
-    avgScore: avgScoreAcrossAll,
-    contributionCount: totalVerified,
-    distinctSkills: skillRatings.length,
-    clubsJoined,
-  });
+  const initials = name
+    ? name
+        .split(' ')
+        .map((n) => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2)
+    : 'U';
 
   return (
     <div>
       <div className="card p-6 md:p-8 mb-6 fade-up flex items-center gap-5">
-        <div className="avatar w-16 h-16 text-xl overflow-hidden">
+        <div className="avatar w-16 h-16 text-xl overflow-hidden flex items-center justify-center bg-[var(--border)] font-display">
           {avatarUrl ? (
-            <img src={avatarUrl} alt={name} className="w-full h-full object-cover" />
+            <img
+              src={avatarUrl}
+              alt={name}
+              className="w-full h-full object-cover"
+            />
           ) : (
             initials
           )}
         </div>
+
         <div>
-          <p className="text-xs text-[var(--ink-dim)] mb-1">{isOwnProfile ? 'Welcome back' : 'Student Profile'}</p>
+          <p className="text-xs text-[var(--ink-dim)] mb-1">
+            {isOwnProfile ? 'Welcome back' : 'Student Profile'}
+          </p>
+
           <div className="flex items-center gap-3 flex-wrap">
             <h1 className="font-display text-2xl">{name}</h1>
-            <span className="pill-verified scale-in" style={{ animationDelay: '0.3s' }}>
-              <CheckCircle2 size={13} /> Verified
+
+            <span
+              className="pill-verified scale-in inline-flex items-center gap-1"
+              style={{ animationDelay: '0.3s' }}
+            >
+              <CheckCircle2 size={13} />
+              Verified
             </span>
           </div>
-          <p className="text-sm text-[var(--ink-dim)] mt-1">{email}</p>
+
+          <p className="text-sm text-[var(--ink-dim)] mt-1">
+            {email}
+          </p>
+
           {isOwnProfile && (
             <div className="mt-2">
-              <AvatarUpload userId={userId} currentAvatarUrl={avatarUrl} onUploaded={(url) => setAvatarUrl(url)} />
+              <AvatarUpload
+                userId={userId}
+                currentAvatarUrl={avatarUrl}
+                onUploaded={setAvatarUrl}
+              />
             </div>
           )}
         </div>
@@ -155,35 +279,72 @@ export default function ProfileView({ userId, isOwnProfile }: { userId: string; 
 
       <div className="grid grid-cols-2 gap-4 mb-4">
         <div className="card-tint bg-[var(--lavender)] p-6 fade-up relative overflow-hidden">
-          <FileCheck className="absolute top-5 right-5 text-[var(--lavender-ink)] opacity-40" size={22} />
-          <p className="text-sm text-[var(--ink-dim)] mb-2">Verified Contributions</p>
-          <p className="font-display text-3xl text-[var(--lavender-ink)]"><CountUp value={totalVerified} /></p>
+          <FileCheck
+            className="absolute top-5 right-5 text-[var(--lavender-ink)] opacity-40"
+            size={22}
+          />
+
+          <p className="text-sm text-[var(--ink-dim)] mb-2">
+            Verified Contributions
+          </p>
+
+          <p className="font-display text-3xl text-[var(--lavender-ink)]">
+            <CountUp value={totalVerified} />
+          </p>
         </div>
+
         <div className="card-tint bg-[var(--mint)] p-6 fade-up relative overflow-hidden">
-          <TrendingUp className="absolute top-5 right-5 text-[var(--mint-ink)] opacity-40" size={22} />
-          <p className="text-sm text-[var(--ink-dim)] mb-2">Overall Rating</p>
-          <p className="font-display text-3xl text-[var(--mint-ink)]"><CountUp value={overallRating} /></p>
+          <TrendingUp
+            className="absolute top-5 right-5 text-[var(--mint-ink)] opacity-40"
+            size={22}
+          />
+
+          <p className="text-sm text-[var(--ink-dim)] mb-2">
+            Overall Rating
+          </p>
+
+          <p className="font-display text-3xl text-[var(--mint-ink)]">
+            <CountUp value={overallRating} />
+          </p>
         </div>
       </div>
 
       <div className="grid md:grid-cols-2 gap-4">
+
         <div className="card p-6 fade-up">
-          <h2 className="text-sm font-semibold text-[var(--ink-dim)] mb-4 uppercase tracking-wide">Skill Ratings</h2>
+          <h2 className="text-sm font-semibold text-[var(--ink-dim)] mb-4 uppercase tracking-wide">
+            Skill Ratings
+          </h2>
+
           {skillRatings.length === 0 ? (
             <div className="text-center py-4">
               <EmptyIllustration />
-              <p className="text-sm text-[var(--ink-dim)]">No verified contributions yet.</p>
+
+              <p className="text-sm text-[var(--ink-dim)]">
+                No verified contributions yet.
+              </p>
             </div>
           ) : (
             <div className="space-y-4">
-              {skillRatings.map((r) => (
-                <div key={r.skillName}>
+              {skillRatings.map((rating) => (
+                <div key={rating.skillName}>
                   <div className="flex justify-between text-sm mb-1.5">
-                    <span>{r.skillName}</span>
-                    <span className="font-semibold">{r.averageScore}</span>
+                    <span>{rating.skillName}</span>
+
+                    <span className="font-semibold">
+                      {rating.averageScore}
+                    </span>
                   </div>
+
                   <div className="h-2 bg-[var(--border)] rounded-full overflow-hidden">
-                    <div className="bar-fill h-full bg-[var(--peach-ink)] rounded-full" style={{ width: barsReady ? `${r.averageScore}%` : '0%' }} />
+                    <div
+                      className="bar-fill h-full bg-[var(--peach-ink)] rounded-full transition-all duration-500"
+                      style={{
+                        width: barsReady
+                          ? `${rating.averageScore}%`
+                          : '0%',
+                      }}
+                    />
                   </div>
                 </div>
               ))}
@@ -192,26 +353,55 @@ export default function ProfileView({ userId, isOwnProfile }: { userId: string; 
         </div>
 
         <div className="card p-6 fade-up">
-          <h2 className="text-sm font-semibold text-[var(--ink-dim)] mb-4 uppercase tracking-wide">Contribution History</h2>
+          <h2 className="text-sm font-semibold text-[var(--ink-dim)] mb-4 uppercase tracking-wide">
+            Contribution History
+          </h2>
+
           {contributions.length === 0 ? (
             <div className="text-center py-4">
               <EmptyIllustration />
-              <p className="text-sm text-[var(--ink-dim)]">Nothing here yet &mdash; join a club and submit your work.</p>
+
+              <p className="text-sm text-[var(--ink-dim)]">
+                Nothing here yet — join a club and submit your work.
+              </p>
             </div>
           ) : (
             <div className="space-y-4">
-              {contributions.map((c, i) => (
-                <div key={c.id} className={`pb-4 ${i !== contributions.length - 1 ? 'border-b border-[var(--border)]' : ''}`}>
+              {contributions.map((contribution, index) => (
+                <div
+                  key={contribution.id}
+                  className={`pb-4 ${
+                    index !== contributions.length - 1
+                      ? 'border-b border-[var(--border)]'
+                      : ''
+                  }`}
+                >
                   <div className="flex justify-between items-start gap-3">
                     <div>
-                      <p className="font-medium text-sm">{c.title}</p>
-                      <p className="text-xs text-[var(--ink-dim)] mt-0.5">{c.clubs?.name} &middot; {c.skills?.name}</p>
+                      <p className="font-medium text-sm">
+                        {contribution.title}
+                      </p>
+
+                      <p className="text-xs text-[var(--ink-dim)] mt-0.5">
+                        {contribution.clubs?.name} &middot;{' '}
+                        {contribution.skills?.name}
+                      </p>
                     </div>
-                    <span className="font-display text-lg shrink-0">{c.score}</span>
+
+                    <span className="font-display text-lg shrink-0">
+                      {contribution.score}
+                    </span>
                   </div>
-                  {c.file_url && (
-                    <a href={c.file_url} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--peach-ink)] hover:underline mt-1 inline-flex items-center gap-1">
-                      <Paperclip size={11} /> View proof
+
+                  {contribution.file_url && (
+                    <a
+                      href={contribution.file_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-[var(--peach-ink)] hover:underline mt-1 inline-flex items-center gap-1"
+                    >
+                      <Paperclip size={11} />
+                      View proof
                     </a>
                   )}
                 </div>
@@ -219,6 +409,7 @@ export default function ProfileView({ userId, isOwnProfile }: { userId: string; 
             </div>
           )}
         </div>
+
       </div>
 
       <div className="mt-4">
