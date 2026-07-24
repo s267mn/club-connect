@@ -6,16 +6,11 @@ import { useRouter } from 'next/navigation';
 import ProfileView from '@/components/ProfileView';
 import Leaderboard from '@/components/Leaderboard';
 
-
 export default function ProfilePage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [checking, setChecking] = useState(true);
   const router = useRouter();
 
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, []);
-  
   useEffect(() => {
     const init = async () => {
       const { data: sessionData } = await supabase.auth.getSession();
@@ -32,7 +27,7 @@ export default function ProfilePage() {
   return (
     <main className="p-6 md:p-10 max-w-6xl">
       <div className="grid lg:grid-cols-[1fr_360px] gap-6 items-start">
-        <ProfileView userId={userId} isOwnProfile={true} />
+        <ProfileView userId={userId} />
         <div>
           <Leaderboard />
         </div>

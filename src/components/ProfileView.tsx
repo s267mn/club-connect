@@ -10,11 +10,13 @@ import {
 } from 'lucide-react';
 import AvatarUpload from './AvatarUpload';
 import RatingHistoryChart from './RatingHistoryChart';
+import { calculateOverallRating } from '@/lib/ratingFormula';
 
 interface Contribution {
   id: string;
   title: string;
   score: number;
+  skill_id?: string;
   file_url?: string;
   clubs?: { name: string };
   skills?: { name: string };
@@ -145,13 +147,14 @@ export default function UserProfileContainer({ userId }: UserProfileProps) {
           setAvatarUrl(userRow.avatar_url);
         }
 
-        const [contribRes, statsRes] = await Promise.all([
+        const [contribRes, clubCountRes] = await Promise.all([
           supabase
             .from('contributions')
             .select(`
               id,
               title,
               score,
+              skill_id,
               file_url,
               clubs ( name ),
               skills ( name )
@@ -160,9 +163,9 @@ export default function UserProfileContainer({ userId }: UserProfileProps) {
             .eq('status', 'verified')
             .order('created_at', { ascending: false }),
           supabase
-            .from('user_skill_stats')
-            .select('*')
-            .eq('user_id', userId)
+            .from('club_members')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', userId),
         ]);
 
         if (contribRes.error) {
@@ -170,22 +173,38 @@ export default function UserProfileContainer({ userId }: UserProfileProps) {
         }
 
         if (isMounted) {
-          const contribList = (contribRes.data ?? []) as Contribution[];
+          const contribList = (contribRes.data ?? []) as unknown as Contribution[];
           setContributions(contribList);
           setTotalVerified(contribList.length);
 
-          if (statsRes.data && statsRes.data.length > 0) {
-            const ratings = statsRes.data.map((stat: any) => ({
-              skillName: stat.skill_name,
-              averageScore: stat.average_score,
-            }));
-            setSkillRatings(ratings);
+          // Compute skill ratings directly from contributions —
+          // same source of truth the Leaderboard uses, so numbers agree.
+          const skillMap: { [skillName: string]: { total: number; count: number } } = {};
+          contribList.forEach((c) => {
+            const skillName = c.skills?.name ?? 'Unknown Skill';
+            if (!skillMap[skillName]) skillMap[skillName] = { total: 0, count: 0 };
+            skillMap[skillName].total += c.score;
+            skillMap[skillName].count += 1;
+          });
 
-            const overall =
-              ratings.reduce((acc: number, curr: SkillRating) => acc + curr.averageScore, 0) /
-              ratings.length;
-            setOverallRating(Math.round(overall));
-          }
+          const ratings: SkillRating[] = Object.entries(skillMap)
+            .map(([skillName, { total, count }]) => ({ skillName, averageScore: Math.round(total / count) }))
+            .sort((a, b) => b.averageScore - a.averageScore);
+
+          setSkillRatings(ratings);
+
+          const avgScoreAcrossAll = contribList.length > 0
+            ? contribList.reduce((s, c) => s + c.score, 0) / contribList.length
+            : 0;
+
+          const rating = calculateOverallRating({
+            avgScore: avgScoreAcrossAll,
+            contributionCount: contribList.length,
+            distinctSkills: Object.keys(skillMap).length,
+            clubsJoined: clubCountRes.count ?? 0,
+          });
+
+          setOverallRating(rating);
         }
       } catch (err) {
         console.error('Error loading profile:', err);
@@ -269,7 +288,7 @@ export default function UserProfileContainer({ userId }: UserProfileProps) {
             <div className="mt-2">
               <AvatarUpload
                 userId={userId}
-                currentAvatarUrl={avatarUrl}
+                currentAvatarUrl={avatarUrl ?? null}
                 onUploaded={setAvatarUrl}
               />
             </div>
