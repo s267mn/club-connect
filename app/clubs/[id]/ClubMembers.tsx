@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import SubmitContribution from './SubmitContribution';
 import VerifyContributions from './VerifyContributions';
-import { UserPlus, Clock, Check, X } from 'lucide-react';
+import { UserPlus, Clock, Check, X, ShieldPlus, ShieldMinus } from 'lucide-react';
 import { enforceWordLimit, TEXT_LIMITS } from '@/lib/textLimits';
 
 type Member = { user_id: string; role: string; users: { name: string; email: string; avatar_url: string | null } | null };
@@ -21,6 +21,7 @@ export default function ClubMembers({ clubId }: { clubId: string }) {
   const [joinMessage, setJoinMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [processingIds, setProcessingIds] = useState<string[]>([]);
+  const [roleChangingIds, setRoleChangingIds] = useState<string[]>([]);
   const router = useRouter();
 
   const loadEverything = async () => {
@@ -39,7 +40,12 @@ export default function ClubMembers({ clubId }: { clubId: string }) {
     setUserId(currentUserId);
 
     const { data: memberRows } = await supabase.from('club_members').select('user_id, role, users(name, email, avatar_url)').eq('club_id', clubId);
-    setMembers((memberRows as any) ?? []);
+    const sortedMembers = [...((memberRows as any) ?? [])].sort((a, b) => {
+      if (a.role === 'admin' && b.role !== 'admin') return -1;
+      if (a.role !== 'admin' && b.role === 'admin') return 1;
+      return 0;
+    });
+    setMembers(sortedMembers);
 
     if (currentUserId) {
       const { data: myMemberRow } = await supabase.from('club_members').select('role').eq('club_id', clubId).eq('user_id', currentUserId).maybeSingle();
@@ -127,6 +133,43 @@ export default function ClubMembers({ clubId }: { clubId: string }) {
     loadEverything();
   };
 
+  const handleRoleChange = async (targetUserId: string, newRole: 'admin' | 'member') => {
+    if (roleChangingIds.includes(targetUserId)) return;
+    setRoleChangingIds((prev) => [...prev, targetUserId]);
+
+    const { error } = await supabase
+      .from('club_members')
+      .update({ role: newRole })
+      .eq('club_id', clubId)
+      .eq('user_id', targetUserId);
+
+    if (error) {
+      console.error('Failed to change role:', error);
+    } else {
+      setMembers((prev) => {
+        const updated = prev.map((m) => (m.user_id === targetUserId ? { ...m, role: newRole } : m));
+        return updated.sort((a, b) => {
+          if (a.role === 'admin' && b.role !== 'admin') return -1;
+          if (a.role !== 'admin' && b.role === 'admin') return 1;
+          return 0;
+        });
+      });
+
+      const { error: notifError } = await supabase.from('notifications').insert({
+        user_id: targetUserId,
+        message: newRole === 'admin'
+          ? "You've been made an admin of your club!"
+          : 'Your admin role has been removed.',
+        activity_type: newRole === 'admin' ? 'join_approved' : 'join_rejected',
+        club_id: clubId,
+        actor_id: userId,
+      });
+      if (notifError) console.error('Failed to notify role change:', notifError);
+    }
+
+    setRoleChangingIds((prev) => prev.filter((id) => id !== targetUserId));
+  };
+
   if (loading) return <div className="text-sm text-[var(--ink-dim)]">Loading...</div>;
 
   return (
@@ -202,13 +245,19 @@ export default function ClubMembers({ clubId }: { clubId: string }) {
           <div className="max-h-80 overflow-y-auto border border-[var(--border)] rounded-xl divide-y divide-[var(--border)]">
             {members.map((m, i) => {
               const initials = (m.users?.name ?? '?').split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase();
+              const isSelf = m.user_id === userId;
+              const canManage = myStatus === 'admin' && !isSelf;
+              const isChanging = roleChangingIds.includes(m.user_id);
+
               return (
                 <div
                   key={i}
-                  onClick={() => router.push(`/profile/${m.user_id}`)}
-                  className="px-5 py-3.5 flex justify-between items-center cursor-pointer hover:bg-[rgba(0,0,0,0.03)] transition-colors"
+                  className="px-5 py-3.5 flex justify-between items-center hover:bg-[rgba(0,0,0,0.03)] transition-colors"
                 >
-                  <div className="flex items-center gap-3">
+                  <div
+                    onClick={() => router.push(`/profile/${m.user_id}`)}
+                    className="flex items-center gap-3 cursor-pointer flex-1 min-w-0"
+                  >
                     <span className="avatar w-8 h-8 text-xs overflow-hidden shrink-0">
                       {m.users?.avatar_url ? (
                         <img src={m.users.avatar_url} alt={m.users.name} className="w-full h-full object-cover" />
@@ -216,9 +265,34 @@ export default function ClubMembers({ clubId }: { clubId: string }) {
                         initials
                       )}
                     </span>
-                    <span className="text-sm">{m.users?.name}</span>
+                    <span className="text-sm truncate">{m.users?.name}</span>
                   </div>
-                  <span className="text-xs uppercase tracking-wide text-[var(--ink-dim)]">{m.role}</span>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-xs uppercase tracking-wide text-[var(--ink-dim)]">{m.role}</span>
+
+                    {canManage && m.role === 'member' && (
+                      <button
+                        onClick={() => handleRoleChange(m.user_id, 'admin')}
+                        disabled={isChanging}
+                        title="Make admin"
+                        className="p-1.5 rounded-lg text-[var(--ink-dim)] hover:text-[var(--peach-ink)] hover:bg-[var(--border)] transition-colors disabled:opacity-40"
+                      >
+                        <ShieldPlus size={15} />
+                      </button>
+                    )}
+
+                    {canManage && m.role === 'admin' && (
+                      <button
+                        onClick={() => handleRoleChange(m.user_id, 'member')}
+                        disabled={isChanging}
+                        title="Remove admin"
+                        className="p-1.5 rounded-lg text-[var(--ink-dim)] hover:text-red-600 hover:bg-[var(--border)] transition-colors disabled:opacity-40"
+                      >
+                        <ShieldMinus size={15} />
+                      </button>
+                    )}
+                  </div>
                 </div>
               );
             })}

@@ -7,7 +7,6 @@ import { enforceWordLimit, TEXT_LIMITS } from '@/lib/textLimits';
 
 type Skill = { id: string; name: string };
 
-
 export default function SubmitContribution({ clubId, userId }: { clubId: string; userId: string }) {
   const [skills, setSkills] = useState<Skill[]>([]);
   const [skillId, setSkillId] = useState('');
@@ -53,10 +52,17 @@ export default function SubmitContribution({ clubId, userId }: { clubId: string;
 
     if (insertError) { setError(insertError.message); setSubmitting(false); return; }
 
-    const { data: clubRow } = await supabase.from('clubs').select('created_by').eq('id', clubId).single();
-    if (clubRow?.created_by) {
+    // Notify every current admin of the club — not just the original founder,
+    // so admins promoted later still get notified of new submissions.
+    const { data: admins } = await supabase
+      .from('club_members')
+      .select('user_id')
+      .eq('club_id', clubId)
+      .eq('role', 'admin');
+
+    for (const admin of admins ?? []) {
       const { error: notifError } = await supabase.from('notifications').insert({
-        user_id: clubRow.created_by,
+        user_id: admin.user_id,
         message: `New contribution submitted: "${title}"`,
         activity_type: 'new_contribution',
         club_id: clubId,
