@@ -9,7 +9,7 @@ import ClubLogoUpload from '@/components/ClubLogoUpload';
 import ClubContributionFeed from '@/components/ClubContributionFeed';
 import { ArrowLeft, Users, FileCheck, Star } from 'lucide-react';
 
-type Club = { id: string; name: string; description: string; category: string | null; logo_url: string | null; created_by: string };
+type Club = { id: string; name: string; description: string; category: string | null; logo_url: string | null; created_by: string; status: string };
 
 export default function ClubDetailPage() {
   const params = useParams();
@@ -34,19 +34,57 @@ export default function ClubDetailPage() {
 
       const { data: clubData, error } = await supabase.from('clubs').select('*').eq('id', id).single();
       if (error || !clubData) { setNotFound(true); setLoading(false); return; }
+      
+      // If the club is not approved, treat it as not found unless the user is an admin or creator
+      const { data: sessionData } = await supabase.auth.getSession();
+      const authEmail = sessionData.session?.user.email;
+
+      let resolvedUserId: string | null = null;
+      if (authEmail) {
+        const { data: userRow } = await supabase
+          .from('users')
+          .select('id')
+          .eq('email', authEmail)
+          .single();
+        if (userRow) resolvedUserId = userRow.id;
+      }
+
+      if (clubData.status !== 'approved') {
+        let hasAccess = false;
+        if (resolvedUserId) {
+          if (clubData.created_by === resolvedUserId) {
+            hasAccess = true;
+          } else {
+            const { data: membershipCheck } = await supabase
+              .from('club_members')
+              .select('role')
+              .eq('club_id', id)
+              .eq('user_id', resolvedUserId)
+              .maybeSingle();
+            if (membershipCheck?.role === 'admin') {
+              hasAccess = true;
+            }
+          }
+        }
+        if (!hasAccess) {
+          setNotFound(true);
+          setLoading(false);
+          return;
+        }
+      }
+
       setClub(clubData as Club);
 
-      const { data: sessionData } = await supabase.auth.getSession();
-      const authUid = sessionData.session?.user.id;
-
-      if (authUid) {
+      if (resolvedUserId) {
         const { data: myMembership } = await supabase
           .from('club_members')
           .select('role')
           .eq('club_id', id)
-          .eq('user_id', authUid)
+          .eq('user_id', resolvedUserId)
           .maybeSingle();
-        setIsAdmin(myMembership?.role === 'admin');
+        setIsAdmin(myMembership?.role === 'admin' || clubData.created_by === resolvedUserId);
+      } else {
+        setIsAdmin(clubData.created_by === resolvedUserId);
       }
 
       const { count: members } = await supabase

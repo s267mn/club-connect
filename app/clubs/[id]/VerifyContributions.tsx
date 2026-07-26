@@ -17,11 +17,16 @@ export default function VerifyContributions({ clubId }: { clubId: string }) {
 
   const loadPending = async () => {
     setLoading(true);
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('contributions')
-      .select('id, title, description, file_url, user_id, skill_id, users!contributions_user_id_fkey(name, email), skills(name)')
+      .select('id, title, description, file_url, user_id, skill_id, users!contributions_user_id_fkey(name, email), skills!contributions_skill_id_fkey(name)')
       .eq('club_id', clubId)
       .eq('status', 'pending');
+
+    if (error) {
+      console.error('Error loading pending contributions:', error);
+    }
+
     setContributions((data as any) ?? []);
     setLoading(false);
   };
@@ -77,11 +82,11 @@ export default function VerifyContributions({ clubId }: { clubId: string }) {
     }
   };
 
-  if (loading) return <div className="text-sm text-[var(--ink-dim)]">Loading contributions...</div>;
+  if (loading) return <div className="text-sm text-[var(--ink-dim)]">Loading pending contributions...</div>;
   if (contributions.length === 0) return null;
 
   return (
-    <div className="mb-8 fade-up">
+    <div className="mb-8 fade-up w-full">
       <div className="flex items-center gap-2 mb-4">
         <ClipboardCheck className="text-[var(--peach-ink)]" size={18} />
         <h2 className="text-sm font-semibold text-[var(--ink-dim)] uppercase tracking-wide">Pending Contributions</h2>
@@ -99,8 +104,8 @@ export default function VerifyContributions({ clubId }: { clubId: string }) {
             )}
             <div className="flex gap-2 items-center mt-3">
               <input type="number" min="0" max="100" placeholder="0-100" value={scores[c.id] ?? ''} onChange={(e) => setScores((prev) => ({ ...prev, [c.id]: e.target.value }))} className="w-20 p-2 bg-transparent border border-[var(--border)] rounded-lg text-sm focus:border-[var(--peach-ink)] focus:outline-none" />
-              <button onClick={() => handleVerify(c.id)} className="btn-primary px-3 py-1.5 text-sm inline-flex items-center gap-1"><Check size={14} /> Verify</button>
-              <button onClick={() => handleReject(c.id)} className="btn-ghost px-3 py-1.5 text-sm inline-flex items-center gap-1"><X size={14} /> Reject</button>
+              <button onClick={() => handleVerify(c.id)} className="btn-primary px-3 py-1.5 text-sm inline-flex items-center gap-1 cursor-pointer"><Check size={14} /> Verify</button>
+              <button onClick={() => handleReject(c.id)} className="btn-ghost px-3 py-1.5 text-sm inline-flex items-center gap-1 cursor-pointer"><X size={14} /> Reject</button>
             </div>
           </div>
         ))}

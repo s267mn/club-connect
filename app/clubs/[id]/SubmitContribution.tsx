@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
-import { FilePlus, Upload, Clock, Search, Check } from 'lucide-react';
+import { FilePlus, Upload, Clock, Search, Check, ShieldCheck } from 'lucide-react';
 import { enforceWordLimit, TEXT_LIMITS } from '@/lib/textLimits';
 
 type Skill = { id: string; name: string };
@@ -24,12 +24,12 @@ export default function SubmitContribution({ clubId, userId }: { clubId: string;
 
   useEffect(() => {
     const loadSkills = async () => {
-      const { data } = await supabase.from('skills').select('id, name');
+      const { data, error } = await supabase.from('skills').select('id, name');
+      if (error) console.error('Failed to load skills:', error);
       setSkills(data ?? []);
     };
     loadSkills();
 
-    // Close dropdown when clicking outside
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsOpen(false);
@@ -39,7 +39,6 @@ export default function SubmitContribution({ clubId, userId }: { clubId: string;
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Filter skills and sort matching/starts-with items to the top
   const filteredSkills = skills
     .filter((s) => s.name.toLowerCase().includes(searchQuery.toLowerCase()))
     .sort((a, b) => {
@@ -60,7 +59,6 @@ export default function SubmitContribution({ clubId, userId }: { clubId: string;
     e.preventDefault();
     setError('');
 
-    // Ensure a valid skill from the dropdown is selected
     if (!skillId) {
       setError('Please select a valid skill from the dropdown.');
       return;
@@ -90,8 +88,6 @@ export default function SubmitContribution({ clubId, userId }: { clubId: string;
 
     if (insertError) { setError(insertError.message); setSubmitting(false); return; }
 
-    // Notify every current admin of the club — not just the original founder,
-    // so admins promoted later still get notified of new submissions.
     const { data: admins } = await supabase
       .from('club_members')
       .select('user_id')
@@ -115,23 +111,27 @@ export default function SubmitContribution({ clubId, userId }: { clubId: string;
 
   if (success) {
     return (
-      <div className="card-tint bg-[var(--peach)] p-6 mb-6 fade-up flex items-center gap-3">
-        <Clock className="icon-spin text-[var(--peach-ink)]" size={20} />
-        <p className="text-sm text-[var(--peach-ink)]">Contribution submitted. Waiting for admin verification.</p>
+      <div className="card-tint bg-[var(--peach)] p-6 mb-6 fade-up flex items-center justify-between gap-3 w-full">
+        <div className="flex items-center gap-3">
+          <Clock className="icon-spin text-[var(--peach-ink)] shrink-0" size={20} />
+          <p className="text-sm text-[var(--peach-ink)] font-medium">Contribution submitted. Waiting for admin verification.</p>
+        </div>
+        <div className="flex items-center gap-1 text-xs px-2.5 py-1 bg-white/40 rounded-full text-[var(--peach-ink)] shrink-0">
+          <ShieldCheck size={14} /> Pending Review
+        </div>
       </div>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="card p-6 mb-6 max-w-md fade-up">
+    <form onSubmit={handleSubmit} className="card p-6 mb-6 w-full fade-up">
       <div className="flex items-center gap-2 mb-4">
         <FilePlus className="text-[var(--peach-ink)]" size={18} />
         <h3 className="font-display text-lg">Submit a Contribution</h3>
       </div>
 
-      {/* Searchable Combobox for Skills */}
-      <div className="relative mb-3" ref={dropdownRef}>
-        <div 
+      <div className="relative mb-3 w-full" ref={dropdownRef}>
+        <div
           onClick={() => setIsOpen(true)}
           className="w-full p-3 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-sm flex items-center justify-between cursor-pointer focus-within:border-[var(--peach-ink)]"
         >
@@ -144,7 +144,7 @@ export default function SubmitContribution({ clubId, userId }: { clubId: string;
               onChange={(e) => {
                 setSearchQuery(e.target.value);
                 setIsOpen(true);
-                if (skillId) setSkillId(''); // Reset selection if modifying query
+                if (skillId) setSkillId('');
               }}
               onFocus={() => setIsOpen(true)}
               className="bg-transparent w-full focus:outline-none text-sm text-[var(--ink)] placeholder:text-[var(--ink-dim)]"
@@ -152,7 +152,6 @@ export default function SubmitContribution({ clubId, userId }: { clubId: string;
           </div>
         </div>
 
-        {/* Scrollable Dropdown List (Capped height to roughly 5 items) */}
         {isOpen && (
           <div className="absolute z-20 left-0 right-0 mt-1 bg-[var(--bg)] border border-[var(--border)] rounded-xl shadow-lg max-h-52 overflow-y-auto">
             {filteredSkills.length > 0 ? (
@@ -187,7 +186,7 @@ export default function SubmitContribution({ clubId, userId }: { clubId: string;
         value={title}
         onChange={(e) => setTitle(enforceWordLimit(e.target.value.slice(0, TEXT_LIMITS.contributionTitle)))}
         maxLength={TEXT_LIMITS.contributionTitle}
-        className="w-full p-3 bg-transparent border border-[var(--border)] rounded-xl text-sm focus:border-[var(--peach-ink)] focus:outline-none"
+        className="w-full p-3 bg-transparent border border-[var(--border)] rounded-xl text-sm focus:border-[var(--peach-ink)] focus:outline-none mb-1"
         required
       />
       <p className="text-xs text-[var(--ink-dim)] text-right mb-3">{title.length}/{TEXT_LIMITS.contributionTitle}</p>
@@ -197,21 +196,23 @@ export default function SubmitContribution({ clubId, userId }: { clubId: string;
         value={description}
         onChange={(e) => setDescription(enforceWordLimit(e.target.value.slice(0, TEXT_LIMITS.contributionDescription)))}
         maxLength={TEXT_LIMITS.contributionDescription}
-        className="w-full p-3 bg-transparent border border-[var(--border)] rounded-xl text-sm focus:border-[var(--peach-ink)] focus:outline-none"
+        className="w-full p-3 bg-transparent border border-[var(--border)] rounded-xl text-sm focus:border-[var(--peach-ink)] focus:outline-none mb-1"
         rows={3}
       />
       <p className="text-xs text-[var(--ink-dim)] text-right mb-3">{description.length}/{TEXT_LIMITS.contributionDescription}</p>
 
       <label className="flex items-center gap-2 text-sm text-[var(--ink-dim)] mb-1 cursor-pointer border border-dashed border-[var(--border)] rounded-xl p-3 hover:border-[var(--peach-ink)] transition-colors">
         <Upload size={16} />
-        {file ? file.name : 'Attach a photo of your work (recommended)'}
+        <span className="truncate">{file ? file.name : 'Attach a photo of your work (recommended)'}</span>
         <input type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="hidden" />
       </label>
       <p className="text-xs text-[var(--ink-dim)] mb-4">Max file size: 5MB</p>
 
       {error && <p className="text-red-600 text-sm mb-3">{error}</p>}
 
-      <button type="submit" disabled={submitting} className="btn-primary w-full py-3 text-sm disabled:opacity-50">{submitting ? 'Submitting...' : 'Submit Contribution'}</button>
+      <button type="submit" disabled={submitting} className="btn-primary w-full py-3 text-sm disabled:opacity-50 cursor-pointer">
+        {submitting ? 'Submitting...' : 'Submit Contribution'}
+      </button>
     </form>
   );
 }

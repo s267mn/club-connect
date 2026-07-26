@@ -34,12 +34,15 @@ export default function ClubMembers({ clubId }: { clubId: string }) {
       return;
     }
 
-    let currentUserId: string | null = null;
-    const { data: userRow } = await supabase.from('users').select('id').eq('email', email).single();
-    currentUserId = userRow?.id ?? null;
+    const { data: userRow, error: userRowError } = await supabase.from('users').select('id').eq('email', email).single();
+    if (userRowError) console.error('Failed to resolve current user id:', userRowError);
+
+    const currentUserId = userRow?.id ?? null;
     setUserId(currentUserId);
 
-    const { data: memberRows } = await supabase.from('club_members').select('user_id, role, users(name, email, avatar_url)').eq('club_id', clubId);
+    const { data: memberRows, error: memberRowsError } = await supabase.from('club_members').select('user_id, role, users(name, email, avatar_url)').eq('club_id', clubId);
+    if (memberRowsError) console.error('Failed to load club members:', memberRowsError);
+
     const sortedMembers = [...((memberRows as any) ?? [])].sort((a, b) => {
       if (a.role === 'admin' && b.role !== 'admin') return -1;
       if (a.role !== 'admin' && b.role === 'admin') return 1;
@@ -48,18 +51,30 @@ export default function ClubMembers({ clubId }: { clubId: string }) {
     setMembers(sortedMembers);
 
     if (currentUserId) {
-      const { data: myMemberRow } = await supabase.from('club_members').select('role').eq('club_id', clubId).eq('user_id', currentUserId).maybeSingle();
+      const myOwnRow = sortedMembers.find((m: Member) => m.user_id === currentUserId);
 
-      if (myMemberRow) {
-        setMyStatus(myMemberRow.role === 'admin' ? 'admin' : 'member');
+      if (myOwnRow) {
+        setMyStatus(myOwnRow.role === 'admin' ? 'admin' : 'member');
+
+        if (myOwnRow.role === 'admin') {
+          const { data: requests, error: requestsError } = await supabase
+            .from('club_join_requests')
+            .select('id, user_id, role_requested, message, users(name, email)')
+            .eq('club_id', clubId)
+            .eq('status', 'pending');
+          if (requestsError) console.error('Failed to load pending join requests:', requestsError);
+          setPendingRequests((requests as any) ?? []);
+        }
       } else {
-        const { data: myRequest } = await supabase.from('club_join_requests').select('status').eq('club_id', clubId).eq('user_id', currentUserId).eq('status', 'pending').maybeSingle();
+        const { data: myRequest, error: myRequestError } = await supabase
+          .from('club_join_requests')
+          .select('status')
+          .eq('club_id', clubId)
+          .eq('user_id', currentUserId)
+          .eq('status', 'pending')
+          .maybeSingle();
+        if (myRequestError) console.error('Failed to check join request status:', myRequestError);
         setMyStatus(myRequest ? 'pending' : 'none');
-      }
-
-      if (myMemberRow?.role === 'admin') {
-        const { data: requests } = await supabase.from('club_join_requests').select('id, user_id, role_requested, message, users(name, email)').eq('club_id', clubId).eq('status', 'pending');
-        setPendingRequests((requests as any) ?? []);
       }
     }
 
@@ -77,7 +92,6 @@ export default function ClubMembers({ clubId }: { clubId: string }) {
     setJoinMessage('');
     loadEverything();
 
-    // Notify club admins of a new join request
     const { data: admins } = await supabase.from('club_members').select('user_id').eq('club_id', clubId).eq('role', 'admin');
     for (const admin of admins ?? []) {
       const { error: notifError } = await supabase.from('notifications').insert({
@@ -155,6 +169,10 @@ export default function ClubMembers({ clubId }: { clubId: string }) {
         });
       });
 
+      if (targetUserId === userId) {
+        setMyStatus(newRole === 'admin' ? 'admin' : 'member');
+      }
+
       const { error: notifError } = await supabase.from('notifications').insert({
         user_id: targetUserId,
         message: newRole === 'admin'
@@ -173,12 +191,15 @@ export default function ClubMembers({ clubId }: { clubId: string }) {
   if (loading) return <div className="text-sm text-[var(--ink-dim)]">Loading...</div>;
 
   return (
-    <div>
-      {/* Pending contribution verification — always on top for admins */}
-      {myStatus === 'admin' && <VerifyContributions clubId={clubId} />}
+    <div className="w-full">
+      {myStatus === 'admin' && (
+        <div className="w-full mb-8">
+          <VerifyContributions clubId={clubId} />
+        </div>
+      )}
 
       {myStatus === 'none' && userId && !showJoinForm && (
-        <button onClick={() => setShowJoinForm(true)} className="btn-primary px-5 py-2.5 mb-6 inline-flex items-center gap-2 text-sm fade-up">
+        <button onClick={() => setShowJoinForm(true)} className="btn-primary px-5 py-2.5 mb-6 inline-flex items-center gap-2 text-sm fade-up cursor-pointer">
           <UserPlus size={16} /> Request to Join
         </button>
       )}
@@ -196,8 +217,8 @@ export default function ClubMembers({ clubId }: { clubId: string }) {
           />
           <p className="text-xs text-[var(--ink-dim)] text-right mb-3">{joinMessage.length}/{TEXT_LIMITS.joinMessage}</p>
           <div className="flex gap-2">
-            <button onClick={handleSubmitJoinRequest} disabled={submitting} className="btn-primary px-4 py-2 text-sm disabled:opacity-50">{submitting ? 'Submitting...' : 'Submit Request'}</button>
-            <button onClick={() => setShowJoinForm(false)} className="btn-ghost px-4 py-2 text-sm">Cancel</button>
+            <button onClick={handleSubmitJoinRequest} disabled={submitting} className="btn-primary px-4 py-2 text-sm disabled:opacity-50 cursor-pointer">{submitting ? 'Submitting...' : 'Submit Request'}</button>
+            <button onClick={() => setShowJoinForm(false)} className="btn-ghost px-4 py-2 text-sm cursor-pointer">Cancel</button>
           </div>
         </div>
       )}
@@ -222,8 +243,8 @@ export default function ClubMembers({ clubId }: { clubId: string }) {
                     {req.message && <p className="text-sm text-[var(--ink)] mt-2 italic">&quot;{req.message}&quot;</p>}
                   </div>
                   <div className="flex gap-2 shrink-0">
-                    <button onClick={() => handleApprove(req)} className="btn-primary px-3 py-1.5 text-sm inline-flex items-center gap-1"><Check size={14} /> Approve</button>
-                    <button onClick={() => handleReject(req)} className="btn-ghost px-3 py-1.5 text-sm inline-flex items-center gap-1"><X size={14} /> Reject</button>
+                    <button onClick={() => handleApprove(req)} className="btn-primary px-3 py-1.5 text-sm inline-flex items-center gap-1 cursor-pointer"><Check size={14} /> Approve</button>
+                    <button onClick={() => handleReject(req)} className="btn-ghost px-3 py-1.5 text-sm inline-flex items-center gap-1 cursor-pointer"><X size={14} /> Reject</button>
                   </div>
                 </div>
               </div>
@@ -232,15 +253,14 @@ export default function ClubMembers({ clubId }: { clubId: string }) {
         </div>
       )}
 
-      {/* Submit Contribution + Members side by side */}
-      <div className="grid md:grid-cols-2 gap-4 items-start">
-        {(myStatus === 'member' || myStatus === 'admin') && userId ? (
-          <SubmitContribution clubId={clubId} userId={userId} />
-        ) : (
-          <div />
-        )}
+      <div className="grid md:grid-cols-2 gap-6 items-start w-full">
+        <div className="w-full">
+          {(myStatus === 'member' || myStatus === 'admin') && userId ? (
+            <SubmitContribution clubId={clubId} userId={userId} />
+          ) : null}
+        </div>
 
-        <div className="card p-6 fade-up">
+        <div className="card p-6 fade-up w-full">
           <h2 className="text-sm font-semibold text-[var(--ink-dim)] mb-4 uppercase tracking-wide">Members</h2>
           <div className="max-h-80 overflow-y-auto border border-[var(--border)] rounded-xl divide-y divide-[var(--border)]">
             {members.map((m, i) => {
@@ -258,7 +278,7 @@ export default function ClubMembers({ clubId }: { clubId: string }) {
                     onClick={() => router.push(`/profile/${m.user_id}`)}
                     className="flex items-center gap-3 cursor-pointer flex-1 min-w-0"
                   >
-                    <span className="avatar w-8 h-8 text-xs overflow-hidden shrink-0">
+                    <span className="avatar w-8 h-8 text-xs overflow-hidden shrink-0 flex items-center justify-center font-bold bg-[var(--border)]">
                       {m.users?.avatar_url ? (
                         <img src={m.users.avatar_url} alt={m.users.name} className="w-full h-full object-cover" />
                       ) : (
@@ -276,7 +296,7 @@ export default function ClubMembers({ clubId }: { clubId: string }) {
                         onClick={() => handleRoleChange(m.user_id, 'admin')}
                         disabled={isChanging}
                         title="Make admin"
-                        className="p-1.5 rounded-lg text-[var(--ink-dim)] hover:text-[var(--peach-ink)] hover:bg-[var(--border)] transition-colors disabled:opacity-40"
+                        className="p-1.5 rounded-lg text-[var(--ink-dim)] hover:text-[var(--peach-ink)] hover:bg-[var(--border)] transition-colors disabled:opacity-40 cursor-pointer"
                       >
                         <ShieldPlus size={15} />
                       </button>
@@ -287,7 +307,7 @@ export default function ClubMembers({ clubId }: { clubId: string }) {
                         onClick={() => handleRoleChange(m.user_id, 'member')}
                         disabled={isChanging}
                         title="Remove admin"
-                        className="p-1.5 rounded-lg text-[var(--ink-dim)] hover:text-red-600 hover:bg-[var(--border)] transition-colors disabled:opacity-40"
+                        className="p-1.5 rounded-lg text-[var(--ink-dim)] hover:text-red-600 hover:bg-[var(--border)] transition-colors disabled:opacity-40 cursor-pointer"
                       >
                         <ShieldMinus size={15} />
                       </button>
