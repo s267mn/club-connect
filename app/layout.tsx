@@ -3,6 +3,7 @@ import { Sora, Public_Sans } from "next/font/google";
 import "./globals.css";
 import Sidebar from './components/Sidebar';
 import NotificationBell from './components/NotificationBell';
+import HelpGuide from './components/HelpGuide';
 import { ImageViewerProvider } from '@/context/ImageViewerContext';
 import ImageViewerPortal from '@/components/ui/ImageViewerPortal';
 import { LoadingProvider } from '@/context/LoadingContext';
@@ -32,12 +33,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${sora.variable} ${publicSans.variable} h-full antialiased`}>
+    <html
+      lang="en"
+      className={`${sora.variable} ${publicSans.variable} h-full antialiased`}
+    >
       <body className="min-h-full bg-[var(--bg)] text-[var(--ink)]">
         <LoadingProvider>
           <NavigationEvents />
           <ImageViewerProvider>
             <LoadingScreen />
+
             <div className="bg-ambient">
               <div className="blob blob-1" />
               <div className="blob blob-2" />
@@ -46,6 +51,7 @@ export default function RootLayout({
 
             <div className="fixed top-0 left-0 h-screen w-3 bg-[var(--peach-ink)] z-0 pointer-events-none" />
 
+            <HelpGuide />
             <NotificationBell />
             <Sidebar />
 

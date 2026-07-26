@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
-import { FilePlus, Upload, Clock } from 'lucide-react';
+import { FilePlus, Upload, Clock, Search, Check } from 'lucide-react';
 import { enforceWordLimit, TEXT_LIMITS } from '@/lib/textLimits';
 
 type Skill = { id: string; name: string };
@@ -10,6 +10,9 @@ type Skill = { id: string; name: string };
 export default function SubmitContribution({ clubId, userId }: { clubId: string; userId: string }) {
   const [skills, setSkills] = useState<Skill[]>([]);
   const [skillId, setSkillId] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
+
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [file, setFile] = useState<File | null>(null);
@@ -17,17 +20,52 @@ export default function SubmitContribution({ clubId, userId }: { clubId: string;
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
 
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     const loadSkills = async () => {
       const { data } = await supabase.from('skills').select('id, name');
       setSkills(data ?? []);
     };
     loadSkills();
+
+    // Close dropdown when clicking outside
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Filter skills and sort matching/starts-with items to the top
+  const filteredSkills = skills
+    .filter((s) => s.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    .sort((a, b) => {
+      const aName = a.name.toLowerCase();
+      const bName = b.name.toLowerCase();
+      const query = searchQuery.toLowerCase();
+
+      const aStarts = aName.startsWith(query) ? 0 : 1;
+      const bStarts = bName.startsWith(query) ? 0 : 1;
+
+      if (aStarts !== bStarts) return aStarts - bStarts;
+      return aName.localeCompare(bName);
+    });
+
+  const selectedSkillName = skills.find((s) => s.id === skillId)?.name || '';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    // Ensure a valid skill from the dropdown is selected
+    if (!skillId) {
+      setError('Please select a valid skill from the dropdown.');
+      return;
+    }
+
     setSubmitting(true);
 
     let fileUrl = '';
@@ -91,10 +129,57 @@ export default function SubmitContribution({ clubId, userId }: { clubId: string;
         <h3 className="font-display text-lg">Submit a Contribution</h3>
       </div>
 
-      <select value={skillId} onChange={(e) => setSkillId(e.target.value)} className="w-full p-3 mb-3 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-sm focus:border-[var(--peach-ink)] focus:outline-none" required>
-        <option value="">Select a skill</option>
-        {skills.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-      </select>
+      {/* Searchable Combobox for Skills */}
+      <div className="relative mb-3" ref={dropdownRef}>
+        <div 
+          onClick={() => setIsOpen(true)}
+          className="w-full p-3 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-sm flex items-center justify-between cursor-pointer focus-within:border-[var(--peach-ink)]"
+        >
+          <div className="flex items-center gap-2 w-full">
+            <Search size={16} className="text-[var(--ink-dim)] shrink-0" />
+            <input
+              type="text"
+              placeholder={selectedSkillName || "Select a skill..."}
+              value={isOpen ? searchQuery : selectedSkillName}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setIsOpen(true);
+                if (skillId) setSkillId(''); // Reset selection if modifying query
+              }}
+              onFocus={() => setIsOpen(true)}
+              className="bg-transparent w-full focus:outline-none text-sm text-[var(--ink)] placeholder:text-[var(--ink-dim)]"
+            />
+          </div>
+        </div>
+
+        {/* Scrollable Dropdown List (Capped height to roughly 5 items) */}
+        {isOpen && (
+          <div className="absolute z-20 left-0 right-0 mt-1 bg-[var(--bg)] border border-[var(--border)] rounded-xl shadow-lg max-h-52 overflow-y-auto">
+            {filteredSkills.length > 0 ? (
+              filteredSkills.map((s) => (
+                <div
+                  key={s.id}
+                  onClick={() => {
+                    setSkillId(s.id);
+                    setSearchQuery('');
+                    setIsOpen(false);
+                  }}
+                  className={`px-4 py-2.5 text-sm cursor-pointer flex items-center justify-between hover:bg-[var(--surface,rgba(255,255,255,0.05))] transition-colors ${
+                    skillId === s.id ? 'bg-[var(--peach)] text-[var(--peach-ink)] font-medium' : 'text-[var(--ink)]'
+                  }`}
+                >
+                  <span>{s.name}</span>
+                  {skillId === s.id && <Check size={14} className="text-[var(--peach-ink)]" />}
+                </div>
+              ))
+            ) : (
+              <div className="px-4 py-3 text-xs text-[var(--ink-dim)] text-center">
+                No matching skills found
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       <input
         type="text"
