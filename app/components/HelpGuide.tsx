@@ -165,7 +165,8 @@ export default function HelpGuide() {
             
             <div className="absolute top-0 right-0 w-96 h-96 bg-[radial-gradient(circle_at_top_right,rgba(255,150,80,0.06),transparent_45%)] pointer-events-none" />
 
-            <div className="flex items-center justify-between pb-6 border-b border-[var(--border)] relative z-10">
+            {/* Top Bar */}
+            <div className="flex items-center justify-between pb-6 border-b border-[var(--border)] relative z-10 shrink-0">
               <div className="flex items-center gap-2">
                 {STEPS.map((_, idx) => (
                   <div
@@ -194,30 +195,34 @@ export default function HelpGuide() {
               </button>
             </div>
 
-            <div 
-              key={step}
-              className={`my-auto py-2 relative z-10 transition-all duration-300 ease-out ${
-                direction === 'next' ? 'animate-slide-in-right' : 'animate-slide-in-left'
-              }`}
-            >
-              <span className="text-xs font-mono tracking-widest uppercase text-[var(--peach-ink)] mb-3 block">
-                0{step + 1} / 0{STEPS.length}
-              </span>
+            {/* Scrollable Middle Content Area */}
+            <div className="overflow-y-auto overflow-x-hidden my-auto py-4 relative z-10 custom-scrollbar">
+              <div 
+                key={step}
+                className={`transition-all duration-300 ease-out ${
+                  direction === 'next' ? 'animate-slide-in-right' : 'animate-slide-in-left'
+                }`}
+              >
+                <span className="text-xs font-mono tracking-widest uppercase text-[var(--peach-ink)] mb-3 block">
+                  0{step + 1} / 0{STEPS.length}
+                </span>
 
-              <h2 className="font-display text-2xl sm:text-3xl mb-3 tracking-tight text-[var(--ink)]">
-                {current.title}
-              </h2>
-              
-              {current.description && (
-                <p className="text-sm sm:text-base text-[var(--ink-dim)] leading-relaxed max-w-xl">
-                  {current.description}
-                </p>
-              )}
+                <h2 className="font-display text-2xl sm:text-3xl mb-3 tracking-tight text-[var(--ink)]">
+                  {current.title}
+                </h2>
+                
+                {current.description && (
+                  <p className="text-sm sm:text-base text-[var(--ink-dim)] leading-relaxed max-w-xl">
+                    {current.description}
+                  </p>
+                )}
 
-              {current.customContent}
+                {current.customContent}
+              </div>
             </div>
 
-            <div className="pt-6 border-t border-[var(--border)] flex flex-col gap-4 relative z-10">
+            {/* Fixed Footer */}
+            <div className="pt-6 border-t border-[var(--border)] flex flex-col gap-4 relative z-10 shrink-0">
               <div className="flex items-center justify-between">
                 {step > 0 ? (
                   <button
@@ -292,6 +297,20 @@ export default function HelpGuide() {
         }
         .animate-shimmer {
           animation: shimmer 3s infinite linear;
+        }
+        /* Custom thin scrollbar for content overflow */
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: var(--border);
+          border-radius: 9999px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: var(--ink-dim);
         }
       `}</style>
     </>
