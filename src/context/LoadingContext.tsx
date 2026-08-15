@@ -3,6 +3,8 @@
 import {
   createContext,
   useContext,
+  useEffect,
+  useRef,
   useState,
   ReactNode,
 } from 'react';
@@ -15,12 +17,42 @@ type LoadingContextType = {
 
 const LoadingContext = createContext<LoadingContextType | null>(null);
 
+// Safety ceiling: if the global loading state is ever stuck true for
+// longer than this, something upstream failed to call stopLoading()
+// (e.g. a hung network request). Force it back to false rather than
+// leaving the user staring at a frozen spinner until they reload.
+const MAX_LOADING_MS = 8000;
+
 export function LoadingProvider({
   children,
 }: {
   children: ReactNode;
 }) {
   const [loadingCount, setLoadingCount] = useState(0);
+  const watchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const loading = loadingCount > 0;
+
+  useEffect(() => {
+    if (loading) {
+      watchdogRef.current = setTimeout(() => {
+        console.warn(
+          `Loading state stuck for over ${MAX_LOADING_MS}ms — forcing reset.`
+        );
+        setLoadingCount(0);
+      }, MAX_LOADING_MS);
+    } else if (watchdogRef.current) {
+      clearTimeout(watchdogRef.current);
+      watchdogRef.current = null;
+    }
+
+    return () => {
+      if (watchdogRef.current) {
+        clearTimeout(watchdogRef.current);
+        watchdogRef.current = null;
+      }
+    };
+  }, [loading]);
 
   function startLoading() {
     setLoadingCount((c) => c + 1);
@@ -33,7 +65,7 @@ export function LoadingProvider({
   return (
     <LoadingContext.Provider
       value={{
-        loading: loadingCount > 0,
+        loading,
         startLoading,
         stopLoading,
       }}

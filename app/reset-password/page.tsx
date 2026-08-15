@@ -11,18 +11,43 @@ export default function ResetPasswordPage() {
   const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
 
+  function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+    return Promise.race([
+      promise,
+      new Promise<T>((_, reject) =>
+        setTimeout(
+          () => reject(new Error('Request timed out. Please try again.')),
+          ms
+        )
+      ),
+    ]);
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (newPassword.length < 8) {
+      setError('Password must be at least 8 characters long.');
+      return;
+    }
+
     setSubmitting(true);
 
-    const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+    try {
+      const { error: updateError } = await withTimeout(
+        supabase.auth.updateUser({ password: newPassword }),
+        10000
+      );
 
-    setSubmitting(false);
+      if (updateError) { setError(updateError.message); return; }
 
-    if (updateError) { setError(updateError.message); return; }
-
-    router.push('/login');
+      router.push('/login');
+    } catch (err: any) {
+      setError(err?.message || 'Unable to update password. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -36,7 +61,7 @@ export default function ResetPasswordPage() {
 
         <input
           type="password"
-          placeholder="New password"
+          placeholder="New password (minimum 8 characters)"
           value={newPassword}
           onChange={(e) => setNewPassword(e.target.value)}
           className="w-full p-3 mb-4 bg-transparent border border-[var(--border)] rounded-xl text-sm focus:border-[var(--peach-ink)] focus:outline-none"

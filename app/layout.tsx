@@ -7,6 +7,7 @@ import HelpGuide from './components/HelpGuide';
 import { ImageViewerProvider } from '@/context/ImageViewerContext';
 import ImageViewerPortal from '@/components/ui/ImageViewerPortal';
 import { LoadingProvider } from '@/context/LoadingContext';
+import { AuthProvider } from '@/context/AuthContext';
 import LoadingScreen from '@/components/ui/LoadingScreen';
 import NavigationEvents from '@/components/NavigationEvents';
 import Footer from './components/Footer';
@@ -38,6 +39,7 @@ export default function RootLayout({
       className={`${sora.variable} ${publicSans.variable} h-full antialiased`}
     >
       <body className="min-h-full bg-[var(--bg)] text-[var(--ink)]">
+        <AuthProvider>
         <LoadingProvider>
           <NavigationEvents />
           <ImageViewerProvider>
@@ -63,6 +65,7 @@ export default function RootLayout({
             <ImageViewerPortal />
           </ImageViewerProvider>
         </LoadingProvider>
+        </AuthProvider>
       </body>
     </html>
   );

@@ -12,6 +12,21 @@ export default function SignupPage() {
   const [submitting, setSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
 
+  // Races a promise against a hard timeout so a hung network call
+  // can't leave the button stuck on "Sending verification email..."
+  // forever.
+  function withTimeout<T>(promise: PromiseLike<T>, ms: number): Promise<T> {
+    return Promise.race([
+      Promise.resolve(promise),
+      new Promise<T>((_, reject) =>
+        setTimeout(
+          () => reject(new Error('Request timed out. Please try again.')),
+          ms
+        )
+      ),
+    ]);
+  }
+
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -41,11 +56,14 @@ export default function SignupPage() {
 
     try {
       // Only confirmed users exist in this table.
-      const { data: existingUser, error: existingError } = await supabase
-        .from('users')
-        .select('id')
-        .eq('email', cleanEmail)
-        .maybeSingle();
+      const { data: existingUser, error: existingError } = await withTimeout(
+        supabase
+          .from('users')
+          .select('id')
+          .eq('email', cleanEmail)
+          .maybeSingle(),
+        10000
+      );
 
       if (existingError) throw existingError;
 
@@ -54,16 +72,19 @@ export default function SignupPage() {
         return;
       }
 
-      const { error: signupError } = await supabase.auth.signUp({
-        email: cleanEmail,
-        password,
-        options: {
-          data: {
-            pending_name: cleanName,
+      const { error: signupError } = await withTimeout(
+        supabase.auth.signUp({
+          email: cleanEmail,
+          password,
+          options: {
+            data: {
+              pending_name: cleanName,
+            },
+            emailRedirectTo: `${window.location.origin}/auth/callback`,
           },
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-        },
-      });
+        }),
+        10000
+      );
 
       if (signupError) {
         const msg = signupError.message.toLowerCase();

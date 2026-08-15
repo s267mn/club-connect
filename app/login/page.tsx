@@ -19,6 +19,21 @@ export default function LoginPage() {
   const [stage, setStage] = useState<'login' | 'forgot' | 'sent'>('login');
   const [resetEmail, setResetEmail] = useState('');
 
+  // Races a promise against a hard timeout so a hung network call
+  // (e.g. signInWithPassword never resolving) can't leave the UI
+  // stuck on "Logging in..." forever.
+  function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+    return Promise.race([
+      promise,
+      new Promise<T>((_, reject) =>
+        setTimeout(
+          () => reject(new Error('Request timed out. Please try again.')),
+          ms
+        )
+      ),
+    ]);
+  }
+
   // Redirect already logged in users
   useEffect(() => {
     const check = async () => {
@@ -45,10 +60,13 @@ export default function LoginPage() {
     try {
       const cleanEmail = email.trim().toLowerCase();
 
-      const { error } = await supabase.auth.signInWithPassword({
-        email: cleanEmail,
-        password,
-      });
+      const { error } = await withTimeout(
+        supabase.auth.signInWithPassword({
+          email: cleanEmail,
+          password,
+        }),
+        10000
+      );
 
       if (error) {
         const msg = error.message.toLowerCase();
@@ -96,11 +114,14 @@ export default function LoginPage() {
     try {
       const cleanEmail = resetEmail.trim().toLowerCase();
 
-      const { error } = await supabase.auth.resetPasswordForEmail(
-        cleanEmail,
-        {
-          redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
-        }
+      const { error } = await withTimeout(
+        supabase.auth.resetPasswordForEmail(
+          cleanEmail,
+          {
+            redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
+          }
+        ),
+        10000
       );
 
       if (error) throw error;
