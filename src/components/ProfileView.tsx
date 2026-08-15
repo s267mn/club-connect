@@ -851,13 +851,13 @@ export default function UserProfileContainer({
 
       {/* Skill ratings + verified contribution history */}
       <div className="grid md:grid-cols-2 gap-4">
-        <div className="card p-6 fade-up">
-          <h2 className="text-sm font-semibold text-[var(--ink-dim)] mb-4 uppercase tracking-wide">
+        <div className="card p-6 fade-up flex flex-col h-[420px]">
+          <h2 className="text-sm font-semibold text-[var(--ink-dim)] mb-4 uppercase tracking-wide shrink-0">
             Skill Ratings
           </h2>
 
           {skillRatings.length === 0 ? (
-            <div className="text-center py-4">
+            <div className="text-center py-4 m-auto">
               <EmptyIllustration />
 
               <p className="text-sm text-[var(--ink-dim)]">
@@ -865,7 +865,7 @@ export default function UserProfileContainer({
               </p>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-4 overflow-y-auto pr-2 scrollbar-thin">
               {skillRatings.map((rating) => (
                 <div key={rating.skillName}>
                   <div className="flex justify-between text-sm mb-1.5">
@@ -894,13 +894,13 @@ export default function UserProfileContainer({
           )}
         </div>
 
-        <div className="card p-6 fade-up">
-          <h2 className="text-sm font-semibold text-[var(--ink-dim)] mb-4 uppercase tracking-wide">
+        <div className="card p-6 fade-up flex flex-col h-[420px]">
+          <h2 className="text-sm font-semibold text-[var(--ink-dim)] mb-4 uppercase tracking-wide shrink-0">
             Contribution History
           </h2>
 
           {contributions.length === 0 ? (
-            <div className="text-center py-4">
+            <div className="text-center py-4 m-auto">
               <EmptyIllustration />
 
               <p className="text-sm text-[var(--ink-dim)]">
@@ -909,7 +909,7 @@ export default function UserProfileContainer({
               </p>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-4 overflow-y-auto pr-2 scrollbar-thin">
               {contributions.map(
                 (contribution, index) => (
                   <div
@@ -964,8 +964,8 @@ export default function UserProfileContainer({
 
       {/* Full contribution history — owner only */}
       {isOwnProfile && (
-        <div className="card p-6 fade-up mt-4">
-          <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+        <div className="card p-6 fade-up mt-4 flex flex-col max-h-[560px] w-full">
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-2 shrink-0">
             <h2 className="text-sm font-semibold text-[var(--ink-dim)] uppercase tracking-wide">
               My Contributions — All Clubs
             </h2>
@@ -995,7 +995,7 @@ export default function UserProfileContainer({
               </p>
             </div>
           ) : (
-            <div className="space-y-6">
+            <div className="space-y-6 overflow-y-auto pr-2 scrollbar-thin">
               {Object.entries(
                 historyByClub
               ).map(([clubName, items]) => (

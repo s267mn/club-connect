@@ -246,7 +246,7 @@ export default function ClubDetailPage() {
    */
 
   return (
-    <main className="p-6 md:p-10 max-w-5xl">
+    <main className="p-6 md:p-10 max-w-5xl mx-auto">
 
       {/* Back to registry */}
 

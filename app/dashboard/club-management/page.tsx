@@ -317,7 +317,7 @@ export default function ClubManagementDashboard() {
 
   if (views.length === 0) {
     return (
-      <main className="p-6 md:p-10 max-w-5xl">
+      <main className="p-6 md:p-10 max-w-5xl mx-auto">
         <div className="card p-8 text-center fade-up">
           <p className="text-sm text-[var(--ink-dim)]">
             You don&apos;t currently belong to
@@ -329,7 +329,7 @@ export default function ClubManagementDashboard() {
   }
 
   return (
-    <main className="p-6 md:p-10 max-w-5xl">
+    <main className="p-6 md:p-10 max-w-5xl mx-auto">
       {/* Header */}
 
       <div className="flex items-center gap-2 mb-7 fade-up">

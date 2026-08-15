@@ -4,13 +4,14 @@ import "./globals.css";
 import Sidebar from './components/Sidebar';
 import NotificationBell from './components/NotificationBell';
 import HelpGuide from './components/HelpGuide';
+import ThemeToggle from './components/ThemeToggle';
 import { ImageViewerProvider } from '@/context/ImageViewerContext';
 import ImageViewerPortal from '@/components/ui/ImageViewerPortal';
 import { LoadingProvider } from '@/context/LoadingContext';
-import { AuthProvider } from '@/context/AuthContext';
 import LoadingScreen from '@/components/ui/LoadingScreen';
 import NavigationEvents from '@/components/NavigationEvents';
 import Footer from './components/Footer';
+import { ThemeProvider } from 'next-themes';
 
 const sora = Sora({
   variable: "--font-display",
@@ -37,9 +38,10 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${sora.variable} ${publicSans.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
       <body className="min-h-full bg-[var(--bg)] text-[var(--ink)]">
-        <AuthProvider>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
         <LoadingProvider>
           <NavigationEvents />
           <ImageViewerProvider>
@@ -54,10 +56,11 @@ export default function RootLayout({
             <div className="fixed top-0 left-0 h-screen w-3 bg-[var(--peach-ink)] z-0 pointer-events-none" />
 
             <HelpGuide />
+            <ThemeToggle />
             <NotificationBell />
             <Sidebar />
 
-            <div className="lg:pl-64 min-h-screen flex flex-col">
+            <div className="min-h-screen flex flex-col">
               <div className="flex-1">{children}</div>
               <Footer />
             </div>
@@ -65,7 +68,7 @@ export default function RootLayout({
             <ImageViewerPortal />
           </ImageViewerProvider>
         </LoadingProvider>
-        </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

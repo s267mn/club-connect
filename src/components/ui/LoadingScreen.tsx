@@ -64,7 +64,14 @@ export default function LoadingScreen() {
 
             <div className="flex justify-center mb-8">
 
-              <div className="text-5xl font-display font-bold animate-pulse">
+              <div
+                className="text-5xl font-display font-bold animate-pulse"
+                style={{
+                  WebkitTextStroke: '1.5px white',
+                  textShadow:
+                    '0 0 1px #fff, 1px 0 0 #fff, -1px 0 0 #fff, 0 1px 0 #fff, 0 -1px 0 #fff, 1px 1px 0 #fff, -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff',
+                }}
+              >
   <span className="text-black">C</span>
   <span className="text-[var(--peach-ink)]">C</span>
 </div>
