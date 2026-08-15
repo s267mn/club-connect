@@ -9,6 +9,7 @@ import { Menu, X } from 'lucide-react';
 export default function Sidebar() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [hasClubManagementAccess, setHasClubManagementAccess] = useState(false);
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
@@ -20,10 +21,23 @@ export default function Sidebar() {
       setUserEmail(email);
 
       if (email) {
-        const { data: userRow } = await supabase.from('users').select('global_role').eq('email', email).single();
+        const { data: userRow } = await supabase.from('users').select('id, global_role').eq('email', email).single();
         setIsSuperAdmin(userRow?.global_role === 'super_admin');
+
+        if (userRow?.id) {
+          const { data: managedMemberships } = await supabase
+            .from('club_members')
+            .select('id')
+            .eq('user_id', userRow.id)
+            .in('role', ['admin', 'faculty'])
+            .limit(1);
+          setHasClubManagementAccess((managedMemberships?.length ?? 0) > 0);
+        } else {
+          setHasClubManagementAccess(false);
+        }
       } else {
         setIsSuperAdmin(false);
+        setHasClubManagementAccess(false);
       }
     };
 
@@ -84,6 +98,11 @@ export default function Sidebar() {
             {userEmail && <Link href="/clubsrequest" className={linkClass('/clubsrequest')}>Start a Club</Link>}
             {userEmail && <Link href="/profile" className={linkClass('/profile')}>My Profile</Link>}
             {isSuperAdmin && <Link href="/dashboard" className={linkClass('/dashboard')}>Dashboard</Link>}
+            {hasClubManagementAccess && (
+              <Link href="/dashboard/club-management" className={linkClass('/dashboard/club-management')}>
+                Club Management
+              </Link>
+            )}
           </nav>
 
           {!userEmail && (
