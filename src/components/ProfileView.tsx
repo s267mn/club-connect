@@ -13,8 +13,10 @@ import {
 } from 'lucide-react';
 import AvatarUpload from './AvatarUpload';
 import RatingHistoryChart from './RatingHistoryChart';
+import ResumeGenerator from './ResumeGenerator';
 import { calculateOverallRating } from '@/lib/ratingFormula';
 import { ROLE_LABELS } from './FacultyReview';
+import { Pencil, Check, X as CloseIcon } from 'lucide-react';
 
 interface Contribution {
   id: string;
@@ -51,6 +53,22 @@ interface HistoryItem {
 interface SkillRating {
   skillName: string;
   averageScore: number;
+}
+
+interface ClubMembershipInfo {
+  clubName: string;
+  role: 'faculty' | 'lead' | 'member';
+}
+
+function normalizeResumeRole(
+  role: string | null
+): 'faculty' | 'lead' | 'member' {
+  const normalized = (role ?? '').toLowerCase().trim();
+
+  if (normalized === 'faculty') return 'faculty';
+  if (normalized === 'admin' || normalized === 'lead') return 'lead';
+
+  return 'member';
 }
 
 interface UserProfileProps {
@@ -188,6 +206,18 @@ export default function UserProfileContainer({
     string | undefined
   >(undefined);
 
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState('');
+  const [savingName, setSavingName] = useState(false);
+  const [nameError, setNameError] = useState('');
+
+  const [clubMemberships, setClubMemberships] = useState<
+    ClubMembershipInfo[]
+  >([]);
+
+  const [lastResumeGeneratedAt, setLastResumeGeneratedAt] =
+    useState<string | null>(null);
+
   const [totalVerified, setTotalVerified] = useState(0);
   const [overallRating, setOverallRating] = useState(0);
 
@@ -231,7 +261,7 @@ export default function UserProfileContainer({
           await supabase
             .from('users')
             .select(
-              'id, name, email, avatar_url'
+              'id, name, email, avatar_url, last_resume_generated_at'
             )
             .eq('id', userId)
             .single();
@@ -275,7 +305,7 @@ export default function UserProfileContainer({
           } = await supabase
             .from('users')
             .select(
-              'id, name, email, avatar_url'
+              'id, name, email, avatar_url, last_resume_generated_at'
             )
             .eq('id', userId)
             .single();
@@ -301,6 +331,10 @@ export default function UserProfileContainer({
           setAvatarUrl(
             userRow.avatar_url ?? undefined
           );
+          setLastResumeGeneratedAt(
+            (userRow as { last_resume_generated_at?: string | null })
+              .last_resume_generated_at ?? null
+          );
         }
 
         /*
@@ -316,6 +350,7 @@ export default function UserProfileContainer({
           contributionRes,
           historyRes,
           clubCountRes,
+          membershipRes,
         ] = await Promise.all([
           supabase
             .from('contributions')
@@ -349,6 +384,11 @@ export default function UserProfileContainer({
               count: 'exact',
               head: true,
             })
+            .eq('user_id', userId),
+
+          supabase
+            .from('club_members')
+            .select('role, clubs (name)')
             .eq('user_id', userId),
         ]);
 
@@ -590,6 +630,35 @@ export default function UserProfileContainer({
 
         setHistory(hydratedHistory);
 
+        if (membershipRes.error) {
+          console.error(
+            'Failed to load club memberships:',
+            membershipRes.error
+          );
+        }
+
+        const membershipRows =
+          (membershipRes.data as unknown as Array<{
+            role: string | null;
+            clubs: { name: string } | { name: string }[] | null;
+          }>) ?? [];
+
+        const hydratedMemberships: ClubMembershipInfo[] =
+          membershipRows.map((row) => {
+            const clubEntry = Array.isArray(row.clubs)
+              ? row.clubs[0]
+              : row.clubs;
+
+            return {
+              clubName: clubEntry?.name ?? 'Unknown Club',
+              role: normalizeResumeRole(row.role),
+            };
+          });
+
+        if (isMounted) {
+          setClubMemberships(hydratedMemberships);
+        }
+
         /*
          * Skill ratings are calculated ONLY from verified
          * contributions.
@@ -763,7 +832,7 @@ export default function UserProfileContainer({
     <div>
       {/* Profile header */}
       <div className="card p-6 md:p-8 mb-6 fade-up flex items-center gap-5">
-        <div className="avatar w-16 h-16 text-xl overflow-hidden flex items-center justify-center bg-[var(--border)] font-display">
+        <div className="avatar w-16 h-16 text-xl overflow-hidden flex items-center justify-center bg-[var(--border)] font-display shrink-0">
           {avatarUrl ? (
             <img
               src={avatarUrl}
@@ -775,7 +844,7 @@ export default function UserProfileContainer({
           )}
         </div>
 
-        <div>
+        <div className="min-w-0 flex-1">
           <p className="text-xs text-[var(--ink-dim)] mb-1">
             {isOwnProfile
               ? 'Welcome back'
@@ -783,9 +852,98 @@ export default function UserProfileContainer({
           </p>
 
           <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="font-display text-2xl">
-              {name}
-            </h1>
+            {editingName ? (
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={nameDraft}
+                  onChange={(e) =>
+                    setNameDraft(e.target.value)
+                  }
+                  maxLength={100}
+                  autoFocus
+                  className="font-display text-2xl bg-transparent border-b-2 border-[var(--peach-ink)] outline-none px-0.5 min-w-0"
+                  style={{ width: `${Math.max(nameDraft.length, 4)}ch` }}
+                />
+
+                <button
+                  type="button"
+                  disabled={savingName}
+                  onClick={async () => {
+                    const trimmed = nameDraft.trim();
+
+                    if (!trimmed) {
+                      setNameError('Name cannot be empty.');
+                      return;
+                    }
+
+                    if (trimmed.length > 100) {
+                      setNameError('Name is too long.');
+                      return;
+                    }
+
+                    setSavingName(true);
+                    setNameError('');
+
+                    const { error: nameUpdateError } =
+                      await supabase
+                        .from('users')
+                        .update({ name: trimmed })
+                        .eq('id', userId);
+
+                    setSavingName(false);
+
+                    if (nameUpdateError) {
+                      setNameError(
+                        nameUpdateError.message
+                      );
+                      return;
+                    }
+
+                    setName(trimmed);
+                    setEditingName(false);
+                  }}
+                  className="p-1.5 rounded-lg text-[var(--mint-ink)] hover:bg-[var(--mint)] transition-colors disabled:opacity-50"
+                  aria-label="Save name"
+                >
+                  <Check size={16} />
+                </button>
+
+                <button
+                  type="button"
+                  disabled={savingName}
+                  onClick={() => {
+                    setEditingName(false);
+                    setNameError('');
+                  }}
+                  className="p-1.5 rounded-lg text-[var(--ink-dim)] hover:bg-[var(--border)] transition-colors disabled:opacity-50"
+                  aria-label="Cancel editing name"
+                >
+                  <CloseIcon size={16} />
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 group">
+                <h1 className="font-display text-2xl">
+                  {name}
+                </h1>
+
+                {isOwnProfile && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNameDraft(name);
+                      setNameError('');
+                      setEditingName(true);
+                    }}
+                    className="p-1 rounded-lg text-[var(--ink-dim)] hover:bg-[var(--border)] hover:text-[var(--ink)] transition-all"
+                    aria-label="Edit name"
+                  >
+                    <Pencil size={14} />
+                  </button>
+                )}
+              </div>
+            )}
 
             <span
               className="pill-verified scale-in inline-flex items-center gap-1"
@@ -798,18 +956,43 @@ export default function UserProfileContainer({
             </span>
           </div>
 
+          {nameError && (
+            <p className="text-red-600 text-xs mt-1">
+              {nameError}
+            </p>
+          )}
+
           <p className="text-sm text-[var(--ink-dim)] mt-1">
             {email}
           </p>
 
           {isOwnProfile && (
-            <div className="mt-2">
+            <div className="mt-3 flex items-center gap-2 flex-wrap">
               <AvatarUpload
                 userId={userId}
                 currentAvatarUrl={
                   avatarUrl ?? null
                 }
                 onUploaded={setAvatarUrl}
+              />
+
+              <ResumeGenerator
+                userId={userId}
+                name={name}
+                email={email}
+                avatarUrl={avatarUrl}
+                overallRating={overallRating}
+                totalVerified={totalVerified}
+                memberships={clubMemberships}
+                contributions={contributions.map((c) => ({
+                  title: c.title,
+                  score: c.score,
+                  clubName: c.clubs?.name ?? 'Unknown Club',
+                  skillName: c.skills?.name ?? 'Unknown Skill',
+                }))}
+                skillRatings={skillRatings}
+                lastResumeGeneratedAt={lastResumeGeneratedAt}
+                onGenerated={setLastResumeGeneratedAt}
               />
             </div>
           )}

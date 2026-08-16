@@ -97,6 +97,7 @@ export default function Sidebar() {
             <Link href="/clubs" className={linkClass('/clubs')}>Explore</Link>
             {userEmail && <Link href="/clubsrequest" className={linkClass('/clubsrequest')}>Start a Club</Link>}
             {userEmail && <Link href="/profile" className={linkClass('/profile')}>My Profile</Link>}
+            {userEmail && <Link href="/profile/resumes" className={linkClass('/profile/resumes')}>Resume History</Link>}
             {isSuperAdmin && <Link href="/dashboard" className={linkClass('/dashboard')}>Dashboard</Link>}
             {hasClubManagementAccess && (
               <Link href="/dashboard/club-management" className={linkClass('/dashboard/club-management')}>
