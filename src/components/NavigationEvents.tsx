@@ -15,8 +15,23 @@ export default function NavigationEvents() {
       stopLoading();
     }, 500);
 
-    return () => clearTimeout(timer);
-  }, [pathname]);
+    /*
+     * IMPORTANT:
+     *
+     * Every startLoading() call above MUST be matched by exactly
+     * one stopLoading() call, whether the timer fires naturally
+     * or this effect is cleaned up early by a fast subsequent
+     * navigation. Previously, cleanup only cleared the timer
+     * without calling stopLoading(), which left the shared
+     * loadingCount permanently incremented whenever navigation
+     * happened faster than 500ms apart — causing the global
+     * loading overlay to get stuck forever.
+     */
+    return () => {
+      clearTimeout(timer);
+      stopLoading();
+    };
+  }, [pathname, startLoading, stopLoading]);
 
   return null;
 }
